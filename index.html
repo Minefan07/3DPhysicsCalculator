@@ -16,7 +16,75 @@
         <input type="number" id="angle" placeholder="Launch Angle (degrees)">
         <input type="number" id="velocity" placeholder="Initial Velocity (m/s)">
         <input type="button" id="launch" value="Launch!" onclick="launchProjectile()">
-        
+        <input type="button" id="step" value="Step Simulation" onclick="render3dSimulation()">
+
+        <script>
+            function findDrag(velocity, radius) {
+                const airDensity = 1.225; // kg/m^3
+                const dragCoefficient = 0.47; // for a sphere
+                const area = Math.PI * Math.pow(radius, 2); // cross-sectional area
+
+                return 0.5 * airDensity * dragCoefficient * area * Math.pow(velocity, 2);
+            }
+
+            function render3dSimulation() {
+                const canvas = document.getElementById('simulationCanvas');
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'blue';
+            }
+
+            function launchProjectile() {
+                const mass = parseFloat(document.getElementById('mass').value);
+                const radius = parseFloat(document.getElementById('radius').value);
+                const angle = parseFloat(document.getElementById('angle').value) * (Math.PI / 180); // convert to radians
+                const velocity = parseFloat(document.getElementById('velocity').value);
+
+                if (isNaN(mass) || isNaN(radius) || isNaN(angle) || isNaN(velocity)) {
+                    alert("Please enter valid numbers for all fields.");
+                    return;
+                }
+
+                // Initial velocity components
+                let vx = velocity * Math.cos(angle);
+                let vy = velocity * Math.sin(angle);
+                let x = 0;
+                let y = 0;
+                const g = 9.81; // gravity in m/s^2
+                const timeStep = 0.1; // time step for simulation
+
+                const interval = setInterval(() => {
+                    const dragForce = findDrag(Math.sqrt(vx * vx + vy * vy), radius);
+                    const dragAcceleration = dragForce / mass;
+
+                    // Update velocities considering drag
+                    const dragAx = (dragAcceleration * (vx / Math.sqrt(vx * vx + vy * vy)));
+                    const dragAy = (dragAcceleration * (vy / Math.sqrt(vx * vx + vy * vy)));
+
+                    vx -= dragAx * timeStep;
+                    vy -= (g + dragAy) * timeStep;
+
+                    // Update positions
+                    x += vx * timeStep;
+                    y += vy * timeStep;
+
+                    render3dSimulation();
+
+                    // Draw projectile
+                    const canvasX = x * 10; // scale for visualization
+                    const canvasY = canvas.height - (y * 10); // invert y for canvas coordinates
+                    const ctx = document.getElementById('simulationCanvas').getContext('2d');
+                    ctx.beginPath();
+                    ctx.arc(canvasX, canvasY, radius * 10, 0, 2 * Math.PI);
+                    ctx.fill(); 
+                    // Stop simulation if projectile hits the ground
+                    if (y <= 0) {
+                        clearInterval(interval);
+                    }
+                }, timeStep * 1000);
+            }
+
+        </script>
 
         <!-- 
         Todo: Add mass, size (for drag), wind calculations, 3d animated graph
