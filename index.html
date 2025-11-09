@@ -5,7 +5,7 @@
     </head>
     <body>
         <h1>3D Physics Calculator</h1>
-        Watch the 3D simulation to determine the path of the projectile. 
+        Watch the 3D simulation to determine the path of the projectile.<br>
 
         <canvas id="simulationCanvas" width="800" height="600" style="border:1px solid #000000;">
             Your browser does not support the HTML5 canvas tag.
@@ -72,7 +72,7 @@
 
                     // Draw projectile
                     const canvasX = x * 10; // scale for visualization
-                    const canvasY = canvas.height - (y * 10); // invert y for canvas coordinates
+                    const canvasY = document.getElementById('simulationCanvas').height - (y * 10); // invert y for canvas coordinates
                     const ctx = document.getElementById('simulationCanvas').getContext('2d');
                     ctx.beginPath();
                     ctx.arc(canvasX, canvasY, radius * 10, 0, 2 * Math.PI);
