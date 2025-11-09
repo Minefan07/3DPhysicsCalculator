@@ -7,6 +7,17 @@
         <h1>3D Physics Calculator</h1>
         Watch the 3D simulation to determine the path of the projectile. 
 
+        <canvas id="simulationCanvas" width="800" height="600" style="border:1px solid #000000;">
+            Your browser does not support the HTML5 canvas tag.
+        </canvas>
+
+        <input type="number" id="mass" placeholder="Mass (kg)">
+        <input type="number" id="radius" placeholder="Radius (m)">
+        <input type="number" id="angle" placeholder="Launch Angle (degrees)">
+        <input type="number" id="velocity" placeholder="Initial Velocity (m/s)">
+        <input type="button" id="launch" value="Launch!" onclick="launchProjectile()">
+        
+
         <!-- 
         Todo: Add mass, size (for drag), wind calculations, 3d animated graph
         -->
