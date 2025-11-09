@@ -51,7 +51,8 @@
                 let x = 0;
                 let y = 0;
                 const g = 9.81; // gravity in m/s^2
-                const timeStep = 0.1; // time step for simulation
+                const timeStep = 1.0 / 60.0; // time step for simulation
+                // 60 fps
 
                 const interval = setInterval(() => {
                     const dragForce = findDrag(Math.sqrt(vx * vx + vy * vy), radius);
