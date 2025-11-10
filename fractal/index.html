@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Fractal Generation Simulation</title>
+        <link rel="icon" href="../images/favicon.png" type="image/png">
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 20px;
+                padding-top: 60px; /* to avoid overlap with fixed header */
+                background-color: #222222;
+                color: white;
+                width: 100%-10px;
+            }
+            
+            .header {
+                background-color: #333333;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                padding: 10px;
+                font-size: 24px;
+                font-weight: bold;
+                margin-bottom: 20px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                z-index: 1000;
+            }
+
+            .goback {
+                background-color: #222222;
+                top: 0;
+                color:white;
+                left: 0;
+                padding: 10px;
+                font-size: 24px;
+                font-weight: bold;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                z-index: 1000;
+                border: none;
+                border-radius: 10px;
+                cursor: pointer;
+            }
+            
+            canvas {
+                background-color: #111111;
+                display: block;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div class="header" id="header"><button class="goback" title="Go Back to All Simulations" onclick="javascript:window.location.href='../'">Physics Simulations</button></div>
+
+        <h1>Fractal Generation Simulation</h1>
+        This simulation generates fractals using the Mandelbrot set algorithm. You can zoom in and explore the intricate patterns formed by complex numbers.<br><br>
+
+        <canvas id="fractalCanvas" width="800" height="600" style="border:1px solid #000000; width:800; height:600;">
+            Your browser does not support the HTML5 canvas tag.
+        </canvas>
+
+        <script>
+            const canvas = document.getElementById('fractalCanvas');
+            const ctx = canvas.getContext('2d');
+
+            window.addEventListener('resize', () => {
+                resizeCanvas();
+            });
+
+            function resizeCanvas() {
+                const canvas = document.getElementById('simulationCanvas');
+                canvas.width = document.getElementById("body").offsetWidth;
+            }
+
+            document.addEventListener('mousewheel', function(event) {
+                event.preventDefault();
+                const zoomFactor = 1.1;
+                if (event.deltaY < 0) {
+                    // zoom in and redraw fractal with higher resolution
+                    //zoom(1 / zoomFactor);
+                } else {
+                    //zoom(zoomFactor);
+                }
+                drawFractal();
+            });
+
+            document.addEventListener('mousedown', function(event) {
+                let startX = event.clientX;
+                let startY = event.clientY;
+
+                function onMouseMove(e) {
+                    const dx = e.clientX - startX;
+                    const dy = e.clientY - startY;
+                    ctx.translate(dx / ctx.getTransform().a, dy / ctx.getTransform().d);
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    drawFractal();
+                }
+
+                function onMouseUp() {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                }
+
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+
+            var x1 = 0; 
+            var y1 = 0;
+            var x2=canvas.width; 
+            var y2=canvas.height;
+
+            function mandelbrot(x, y) {
+                let real = x;
+                let imag = y;
+                let maxIterations = 100;
+                for (let i = 0; i < maxIterations; i++) {
+                    let real2 = real * real;
+                    let imag2 = imag * imag;
+                    if (real2 + imag2 > 4) return i;
+                    imag = 2 * real * imag + y;
+                    real = real2 - imag2 + x;
+                }
+                return maxIterations;
+            }
+
+            function drawFractal() {
+                const width = canvas.width;
+                const height = canvas.height;
+
+                for (let px = 0; px < x2; px++) {
+                    for (let py = 0; py < y2; py++) {
+                        let x0 = (px / width) * 3.5 - 2.5;
+                        let y0 = (py / height) * 2 - 1;
+                        let iteration = mandelbrot(x0, y0);
+                        let color = iteration === 100 ? 'black' : `hsl(${iteration * 10}, 100%, 50%)`;
+                        ctx.fillStyle = color;
+                        ctx.fillRect(px, py, 1, 1);
+                    }
+                }
+            }
+            
+
+            function clearCanvas() {
+                const canvas = document.getElementById('simulationCanvas');
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawPath();
+            }
+
+            function zoom(factor) {
+                var newCenter = ((x1 + x2) / 2 ) * factor;
+                var newWidth = (x2 - x1) * factor;
+                x1 = newCenter - newWidth / 2;
+                x2 = newCenter + newWidth / 2;
+                var newCenterY = ((y1 + y2) / 2 ) * factor;
+                var newHeight = (y2 - y1) * factor;
+                y1 = newCenterY - newHeight / 2;
+                y2 = newCenterY + newHeight / 2;
+            }
+
+            drawFractal();
+        </script>
+    </body>
+</html>

@@ -1,216 +1,77 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>3D Physics Calculator</title>
+        <title>All Physics/Math Simulations</title>
         <style>
             body {
                 font-family: Arial, sans-serif;
                 margin: 20px;
-                padding-top: 60px; /* to avoid overlap with fixed header */
                 background-color: #222222;
                 color: white;
-                width: 100%-10px;
             }
-            
-            .header {
-                background-color: #333333;
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                padding: 10px;
-                font-size: 24px;
-                font-weight: bold;
-                margin-bottom: 20px;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                z-index: 1000;
+            h1 {
+                color: #ff6600;
             }
-            
-            canvas {
-                background-color: #111111;
+            a {
                 display: block;
+                margin: 10px 0;
+                text-decoration: none;
+                color: #00ccff;
+            }
+            a:hover {
+                text-decoration: underline;
             }
 
-            input {
-                margin: 5px;
-                background-color:#000000;
-                padding: 5px;
-                border-radius: 3px;
-                border:0;
-                color: white;
-
-            }
-
-            .launch {
+            .one {
+                position: relative;
+                top: 40px;
+                left: 20px;
+                background-color: #333333;
+                padding: 10px;
+                width: fit-content;
                 border-radius: 5px;
-                border:none;
-                background-image: linear-gradient(blue, green);
-                color: white;
-                padding: 10px 20px;
-                font-size: 16px;
-                cursor: pointer;
+                margin-bottom: 10px;
             }
-
-            .launch:active {
-                background-image: linear-gradient(darkblue, darkgreen);
+            .two {
+                position: relative;
+                top: 60px;
+                left: 300px;
+                background-color: #333333;
+                padding: 10px;
+                width: fit-content;
+                border-radius: 5px;
+                margin-bottom: 10px;
             }
-
+            .three {
+                position: relative;
+                top: 80px;
+                left: 40px;
+                background-color: #333333;
+                padding: 10px;
+                width: fit-content;
+                border-radius: 5px;
+                margin-bottom: 10px;
+            }
+            .four {
+                position: relative;
+                top: 100px;
+                left: 320px;
+                background-color: #333333;
+                padding: 10px;
+                width: fit-content;
+                border-radius: 5px;
+                margin-bottom: 10px;
+            }
         </style>
     </head>
-    <body onload="resizeCanvas()" id="body">
-        <div id="header"></div>
-        <div id="menu"></div>
 
-        Due to the high want for me to make random stuff happen with physics, I decided to make a 2D physics calculator that simulates projectile motion with air resistance.<br>
-        This simulation calculates the trajectory of a projectile launched at a specified angle and initial velocity, taking into account air resistance based on the object's size and mass.<br>
-        The simulation updates the position of the projectile in real-time and displays its path on a 2D canvas.<br><br>
+    <body>
+        <h1>All Physics/Math Simulations</h1>
+        Here you can find the simulations I made for fun (also for coding hours lol)!<br>
 
-        <h1>2D Physics Calculator</h1>
-        Watch the 2D simulation to determine the path of the projectile.<br>
-
-        <canvas id="simulationCanvas" width="800" height="600" style="border:1px solid #000000;">
-            Your browser does not support the HTML5 canvas tag.
-        </canvas><br>
-
-        <input type="number" id="mass" placeholder="Mass (kg)">
-        <input type="number" id="radius" placeholder="Radius (m)">
-        <input type="number" id="angle" placeholder="Launch Angle (degrees)">
-        <input type="number" id="velocity" placeholder="Initial Velocity (m/s)">
-        <input type="button" id="launch" class="launch" value="Launch!" onclick="launchProjectile()">
-
-        <div id="data"></div>
-        <script>
-            window.addEventListener('resize', () => {
-                const canvas = document.getElementById('simulationCanvas');
-                canvas.width = document.getElementsByName("body")[0].width;
-            });
-
-            function resizeCanvas() {
-                const canvas = document.getElementById('simulationCanvas');
-                canvas.width = document.getElementById("body").offsetWidth;
-            }
-
-            function findDrag(velocity, radius) {
-                const airDensity = 1.225; // kg/m^3
-                const dragCoefficient = 0.47; // for a sphere
-                const area = Math.PI * Math.pow(radius, 2); // cross-sectional area
-
-                return 0.5 * airDensity * dragCoefficient * area * Math.pow(velocity, 2);
-            }
-
-            var pathPoints = [];
-
-            function clearCanvas() {
-                const canvas = document.getElementById('simulationCanvas');
-                const ctx = canvas.getContext('2d');
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                drawPath();
-            }
-
-            function render3dSimulation(x,y) {
-                const canvas = document.getElementById('simulationCanvas');
-                const ctx = canvas.getContext('2d');
-                clearCanvas();
-                ctx.fillStyle = 'blue';
-
-                pathPoints.push({x: x, y: y});
-            }
-
-            function drawPath() {
-                // 2d path drawing -- from discrete points
-                const canvas = document.getElementById('simulationCanvas');
-                const ctx = canvas.getContext('2d');
-                ctx.strokeStyle = 'white';
-                for (let i = 1; i < pathPoints.length; i++) {
-                    const p1 = pathPoints[i - 1];
-                    const p2 = pathPoints[i];
-                    ctx.beginPath();
-                    ctx.moveTo(p1.x * 30, canvas.height - (p1.y * 10));
-                    ctx.lineTo(p2.x * 30, canvas.height - (p2.y * 10));
-                    ctx.stroke();
-                }
-            }
-
-            function launchProjectile() {
-                const mass = parseFloat(document.getElementById('mass').value);
-                const radius = parseFloat(document.getElementById('radius').value);
-                const angle = parseFloat(document.getElementById('angle').value) * (Math.PI / 180); // convert to radians
-                const velocity = parseFloat(document.getElementById('velocity').value);
-
-                if (isNaN(mass) || isNaN(radius) || isNaN(angle) || isNaN(velocity)) {
-                    alert("Please enter valid numbers for all fields.");
-                    return;
-                }
-
-                // Initial velocity components
-                let vx = velocity * Math.cos(angle);
-                let vy = velocity * Math.sin(angle);
-                let x = radius; // start at radius distance
-                let y = radius; // start at radius height
-
-                const g = 9.81; // gravity in m/s^2
-                const timeStep = 1.0 / 60.0; // time step for simulation
-                // 60 fps
-
-                clearCanvas();
-                pathPoints = [];
-
-                const interval = setInterval(() => {
-                    const dragForce = findDrag(Math.sqrt(vx * vx + vy * vy), radius);
-                    const dragAcceleration = dragForce / mass;
-
-                    // Update velocities considering drag
-                    const dragAx = (dragAcceleration * (vx / Math.sqrt(vx * vx + vy * vy)));
-                    const dragAy = (dragAcceleration * (vy / Math.sqrt(vx * vx + vy * vy)));
-
-                    vx -= dragAx * timeStep;
-                    vy -= (g + dragAy) * timeStep;
-
-                    // Update positions
-                    x += vx * timeStep;
-                    y += vy * timeStep;
-
-                    render3dSimulation(x,y);
-
-                    // Draw projectile
-                    const canvasX = x * 30; // scale for visualization
-                    const canvasY = document.getElementById('simulationCanvas').height - (y * 10); // invert y for canvas coordinates
-                    const ctx = document.getElementById('simulationCanvas').getContext('2d');
-                    ctx.beginPath();
-                    ctx.arc(canvasX, canvasY, radius * 10, 0, 2 * Math.PI);
-                    ctx.fill(); 
-
-                    // Print data
-                    printData(`X: ${x.toFixed(2)} m, Y: ${y.toFixed(2)} m Velocity: ${Math.sqrt(vx * vx + vy * vy).toFixed(2)} m/s`);
-                    drawVector(ctx, canvasX, canvasY, vx * 0.5, vy * 0.5, 'red'); // velocity vector
-
-                    // Stop simulation if projectile hits the ground
-                    if (y <= radius) {
-                        clearInterval(interval);
-                    }
-                }, timeStep * 1000);
-
-                drawPath();
-            }
-
-            function printData(data) {
-                const dataDiv = document.getElementById('data');
-                dataDiv.innerHTML = data;
-            }
-
-            function drawVector(ctx, startX, startY, vecX, vecY, color) {
-                ctx.strokeStyle = color;
-                ctx.beginPath();
-                ctx.moveTo(startX, startY);
-                ctx.lineTo(startX + vecX, startY - vecY); // invert y for canvas coordinates
-                ctx.stroke();
-            }
-
-        </script>
-
-        <div class="header" id="header">Physics Simulations</div>
-        <!-- 
-        Todo: Add mass, size (for drag), wind calculations, 3d animated graph
-        -->
+        <div class="one"><a href="projectile/">Projectile Motion Simulation</a></div>
+        <div class="two"><a href="circuit.html">Electric Circuit Simulation</a></div>
+        <div class="three"><a href="wave.html">Wave Interference Simulation</a></div>
+        <div class="four"><a href="fractal/">Fractal Generation Simulation</a></div>
     </body>
-</html>
+</html> 
