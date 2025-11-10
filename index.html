@@ -2,36 +2,83 @@
 <html>
     <head>
         <title>3D Physics Calculator</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 20px;
+                padding-top: 60px; /* to avoid overlap with fixed header */
+            }
+            
+            .header {
+                background-color: #f2f2f2;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                padding: 10px;
+                font-size: 24px;
+                font-weight: bold;
+                margin-bottom: 20px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                z-index: 1000;
+            }
+
+            input {
+                margin: 5px;
+            }
+
+            .launch {
+                border-radius: 5px;
+                background-image: linear-gradient(blue, green);
+                padding: 10px 20px;
+                font-size: 16px;
+                cursor: pointer;
+            }
+
+            .launch:click {
+                background-image: #ddd;
+            }
+
+        </style>
     </head>
     <body>
+        <div id="header"></div>
+        <div id="menu"></div>
+
         <h1>3D Physics Calculator</h1>
-        Watch the 3D simulation to determine the path of the projectile.<br>
+        Watch the 2D simulation to determine the path of the projectile.<br>
 
         <canvas id="simulationCanvas" width="800" height="600" style="border:1px solid #000000;">
             Your browser does not support the HTML5 canvas tag.
-        </canvas>
+        </canvas><br>
 
         <input type="number" id="mass" placeholder="Mass (kg)">
         <input type="number" id="radius" placeholder="Radius (m)">
         <input type="number" id="angle" placeholder="Launch Angle (degrees)">
         <input type="number" id="velocity" placeholder="Initial Velocity (m/s)">
-        <input type="button" id="launch" value="Launch!" onclick="launchProjectile()">
-        <input type="button" id="step" value="Step Simulation" onclick="render3dSimulation()">
+        <input type="button" id="launch" class="launch" value="Launch!" onclick="launchProjectile()">
 
+        <div id="data"></div>
+
+        <script src="three.core.js"></script>
         <script>
+            import * as THREE from 'three';
+
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+
+            const renderer = new THREE.WebGLRenderer();
+            renderer.setSize( window.innerWidth, window.innerHeight );
+            document.body.appendChild( renderer.domElement );
+            camera.position.z = 5;
+            
+
             function findDrag(velocity, radius) {
                 const airDensity = 1.225; // kg/m^3
                 const dragCoefficient = 0.47; // for a sphere
                 const area = Math.PI * Math.pow(radius, 2); // cross-sectional area
 
                 return 0.5 * airDensity * dragCoefficient * area * Math.pow(velocity, 2);
-            }
-
-            function render3dSimulation() {
-                const canvas = document.getElementById('simulationCanvas');
-                const ctx = canvas.getContext('2d');
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = 'blue';
             }
 
             function launchProjectile() {
@@ -49,7 +96,7 @@
                 let vx = velocity * Math.cos(angle);
                 let vy = velocity * Math.sin(angle);
                 let x = 0;
-                let y = 0;
+                let y = radius; // start at radius height
                 const g = 9.81; // gravity in m/s^2
                 const timeStep = 1.0 / 60.0; // time step for simulation
                 // 60 fps
@@ -72,21 +119,40 @@
                     render3dSimulation();
 
                     // Draw projectile
-                    const canvasX = x * 10; // scale for visualization
+                    const canvasX = x * 30; // scale for visualization
                     const canvasY = document.getElementById('simulationCanvas').height - (y * 10); // invert y for canvas coordinates
                     const ctx = document.getElementById('simulationCanvas').getContext('2d');
                     ctx.beginPath();
                     ctx.arc(canvasX, canvasY, radius * 10, 0, 2 * Math.PI);
                     ctx.fill(); 
+
+                    // Print data
+                    printData(`Time: ${(x / vx).toFixed(2)} s, X: ${x.toFixed(2)} m, Y: ${y.toFixed(2)} m Velocity: ${Math.sqrt(vx * vx + vy * vy).toFixed(2)} m/s`);
+                    drawVector(ctx, canvasX, canvasY, vx * 0.5, vy * 0.5, 'red'); // velocity vector
+
                     // Stop simulation if projectile hits the ground
-                    if (y <= 0) {
+                    if (y <= radius) {
                         clearInterval(interval);
                     }
                 }, timeStep * 1000);
             }
 
+            function printData(data) {
+                const dataDiv = document.getElementById('data');
+                dataDiv.innerHTML = data;
+            }
+
+            function drawVector(ctx, startX, startY, vecX, vecY, color) {
+                ctx.strokeStyle = color;
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(startX + vecX, startY - vecY); // invert y for canvas coordinates
+                ctx.stroke();
+            }
+
         </script>
 
+        <div class="header" id="header">Physics Simulations</div>
         <!-- 
         Todo: Add mass, size (for drag), wind calculations, 3d animated graph
         -->
