@@ -7,10 +7,13 @@
                 font-family: Arial, sans-serif;
                 margin: 20px;
                 padding-top: 60px; /* to avoid overlap with fixed header */
+                background-color: #222222;
+                color: white;
+                width: 100%-10px;
             }
             
             .header {
-                background-color: #f2f2f2;
+                background-color: #333333;
                 position: fixed;
                 top: 0;
                 left: 0;
@@ -22,30 +25,47 @@
                 box-shadow: 0 2px 4px rgba(0,0,0,0.1);
                 z-index: 1000;
             }
+            
+            canvas {
+                background-color: #111111;
+                display: block;
+            }
 
             input {
                 margin: 5px;
+                background-color:#000000;
+                padding: 5px;
+                border-radius: 3px;
+                border:0;
+                color: white;
+
             }
 
             .launch {
                 border-radius: 5px;
+                border:none;
                 background-image: linear-gradient(blue, green);
+                color: white;
                 padding: 10px 20px;
                 font-size: 16px;
                 cursor: pointer;
             }
 
-            .launch:click {
-                background-image: #ddd;
+            .launch:active {
+                background-image: linear-gradient(darkblue, darkgreen);
             }
 
         </style>
     </head>
-    <body>
+    <body onload="resizeCanvas()" id="body">
         <div id="header"></div>
         <div id="menu"></div>
 
-        <h1>3D Physics Calculator</h1>
+        Due to the high want for me to make random stuff happen with physics, I decided to make a 2D physics calculator that simulates projectile motion with air resistance.<br>
+        This simulation calculates the trajectory of a projectile launched at a specified angle and initial velocity, taking into account air resistance based on the object's size and mass.<br>
+        The simulation updates the position of the projectile in real-time and displays its path on a 2D canvas.<br><br>
+
+        <h1>2D Physics Calculator</h1>
         Watch the 2D simulation to determine the path of the projectile.<br>
 
         <canvas id="simulationCanvas" width="800" height="600" style="border:1px solid #000000;">
@@ -59,19 +79,16 @@
         <input type="button" id="launch" class="launch" value="Launch!" onclick="launchProjectile()">
 
         <div id="data"></div>
-
-        <script src="three.core.js"></script>
         <script>
-            import * as THREE from 'three';
+            window.addEventListener('resize', () => {
+                const canvas = document.getElementById('simulationCanvas');
+                canvas.width = document.getElementsByName("body")[0].width;
+            });
 
-            const scene = new THREE.Scene();
-            const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
-
-            const renderer = new THREE.WebGLRenderer();
-            renderer.setSize( window.innerWidth, window.innerHeight );
-            document.body.appendChild( renderer.domElement );
-            camera.position.z = 5;
-            
+            function resizeCanvas() {
+                const canvas = document.getElementById('simulationCanvas');
+                canvas.width = document.getElementById("body").offsetWidth;
+            }
 
             function findDrag(velocity, radius) {
                 const airDensity = 1.225; // kg/m^3
@@ -79,6 +96,39 @@
                 const area = Math.PI * Math.pow(radius, 2); // cross-sectional area
 
                 return 0.5 * airDensity * dragCoefficient * area * Math.pow(velocity, 2);
+            }
+
+            var pathPoints = [];
+
+            function clearCanvas() {
+                const canvas = document.getElementById('simulationCanvas');
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawPath();
+            }
+
+            function render3dSimulation(x,y) {
+                const canvas = document.getElementById('simulationCanvas');
+                const ctx = canvas.getContext('2d');
+                clearCanvas();
+                ctx.fillStyle = 'blue';
+
+                pathPoints.push({x: x, y: y});
+            }
+
+            function drawPath() {
+                // 2d path drawing -- from discrete points
+                const canvas = document.getElementById('simulationCanvas');
+                const ctx = canvas.getContext('2d');
+                ctx.strokeStyle = 'white';
+                for (let i = 1; i < pathPoints.length; i++) {
+                    const p1 = pathPoints[i - 1];
+                    const p2 = pathPoints[i];
+                    ctx.beginPath();
+                    ctx.moveTo(p1.x * 30, canvas.height - (p1.y * 10));
+                    ctx.lineTo(p2.x * 30, canvas.height - (p2.y * 10));
+                    ctx.stroke();
+                }
             }
 
             function launchProjectile() {
@@ -95,11 +145,15 @@
                 // Initial velocity components
                 let vx = velocity * Math.cos(angle);
                 let vy = velocity * Math.sin(angle);
-                let x = 0;
+                let x = radius; // start at radius distance
                 let y = radius; // start at radius height
+
                 const g = 9.81; // gravity in m/s^2
                 const timeStep = 1.0 / 60.0; // time step for simulation
                 // 60 fps
+
+                clearCanvas();
+                pathPoints = [];
 
                 const interval = setInterval(() => {
                     const dragForce = findDrag(Math.sqrt(vx * vx + vy * vy), radius);
@@ -116,7 +170,7 @@
                     x += vx * timeStep;
                     y += vy * timeStep;
 
-                    render3dSimulation();
+                    render3dSimulation(x,y);
 
                     // Draw projectile
                     const canvasX = x * 30; // scale for visualization
@@ -127,7 +181,7 @@
                     ctx.fill(); 
 
                     // Print data
-                    printData(`Time: ${(x / vx).toFixed(2)} s, X: ${x.toFixed(2)} m, Y: ${y.toFixed(2)} m Velocity: ${Math.sqrt(vx * vx + vy * vy).toFixed(2)} m/s`);
+                    printData(`X: ${x.toFixed(2)} m, Y: ${y.toFixed(2)} m Velocity: ${Math.sqrt(vx * vx + vy * vy).toFixed(2)} m/s`);
                     drawVector(ctx, canvasX, canvasY, vx * 0.5, vy * 0.5, 'red'); // velocity vector
 
                     // Stop simulation if projectile hits the ground
@@ -135,6 +189,8 @@
                         clearInterval(interval);
                     }
                 }, timeStep * 1000);
+
+                drawPath();
             }
 
             function printData(data) {
