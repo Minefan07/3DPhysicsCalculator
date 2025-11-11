@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Electric Circuit Simulation</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 20px;
+                padding-top: 60px; /* to avoid overlap with fixed header */
+                background-color: #222222;
+                color: white;
+                width: 100%-10px;
+            }
+            
+            .header {
+                background-color: #333333;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                padding: 10px;
+                font-size: 24px;
+                font-weight: bold;
+                margin-bottom: 20px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                z-index: 1000;
+            }
+
+            .goback {
+                background-color: #222222;
+                top: 0;
+                color:white;
+                left: 0;
+                padding: 10px;
+                font-size: 24px;
+                font-weight: bold;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                z-index: 1000;
+                border: none;
+                border-radius: 10px;
+                cursor: pointer;
+            }
+            
+            canvas {
+                background-color: #111111;
+                display: block;
+            }
+        </style>
+    </head>
+
+    <body onload="resizeCanvas()" id="body">
+        <div class="header" id="header"><button class="goback" title="Go Back to All Simulations" onclick="javascript:window.location.href='../'">Physics Simulations</button></div>
+
+        <h1>Electric Circuit Simulation</h1>
+        This simulation allows you to build and analyze electric circuits using various components like resistors, capacitors, and inductors.<br>
+        Right-click and drag to connect two components.<br><br>
+
+        <canvas id="circuitCanvas" width="800" height="600" style="border:1px solid #000000; width:800; height:600;">
+            Your browser does not support the HTML5 canvas tag.
+        </canvas><br>
+        <!--
+        <select id="componentSelect">
+            <option value="resistor">Resistor</option>
+            <option value="capacitor">Capacitor</option>
+            <option value="inductor">Inductor</option>
+            <option value="voltageSource">Voltage Source</option>
+            <option value="AND Gate">AND Gate</option>
+            <option value="OR Gate">OR Gate</option>
+            <option value="NOT Gate">NOT Gate</option>
+        </select>
+    -->
+        <button id="addComponentButton" onclick="addComponent()">Add Component</button>
+        <script>
+            const canvas = document.getElementById('circuitCanvas');
+            const ctx = canvas.getContext('2d');
+
+            window.addEventListener('resize', () => {
+                resizeCanvas();
+            });
+
+            window.addEventListener('mousedown', (e) => {
+                if (e && (e.which == 2 || e.button == 4 )) {
+                    console.log('middleclicked')
+                } 
+                else if (e && (e.which == 3 || e.button == 2 )) {
+                    console.log('rightclicked')
+                }
+                else {
+                    console.log('leftclicked')
+                }
+            });
+
+            function resizeCanvas() {
+                const canvas = document.getElementById('simulationCanvas');
+                canvas.width = document.getElementById("body").offsetWidth;
+            }
+
+            function addComponent() {
+                const select = document.getElementById('componentSelect');
+                const component = select.value;
+                alert('Adding component: ' + component);
+                // Placeholder for adding component logic
+            }
+
+            function resizeCanvas() {
+                const canvas = document.getElementById('circuitCanvas');
+                canvas.width = document.getElementById("body").offsetWidth;
+            }
+
+            document.addEventListener('mousewheel', function(event) {
+                event.preventDefault();
+                const zoomFactor = 1.1;
+                if (event.deltaY < 0) {
+                    // zoom in and redraw circuit with higher resolution
+                    //zoom(1 / zoomFactor);
+                } else {
+                    //zoom(zoomFactor);
+                }
+                drawCircuit();
+            });
+
+            document.addEventListener('mousedown', function(event) {
+                let startX = event.clientX;
+                let startY = event.clientY;
+
+                function onMouseMove(e) {
+                    const dx = e.clientX - startX;
+                    const dy = e.clientY - startY;
+                    ctx.translate(dx / ctx.getTransform().a, dy / ctx.getTransform().d);
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    drawCircuit();
+                }
+
+                function onMouseUp() {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                }
+
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+
+            var x1 = 0; 
+            var y1 = 0;
+            var x2=canvas.width; 
+            var y2=canvas.height;
+
+            function drawCircuit() {
+                // Placeholder for circuit drawing logic
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "lightgray";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "black";
+                ctx.fillText("Circuit components would be drawn here.", 50, 50);
+            }
+
+            drawCircuit();
+        </script>
+    </body>
+</html>
