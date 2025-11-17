@@ -390,21 +390,40 @@
                         const v1mag = Math.sqrt(vx1 * vx1 + vy1 * vy1);
                         const v2mag = Math.sqrt(vx2 * vx2 + vy2 * vy2);
 
-                        //find component of both velocity along n hat (the normal)
-                        const v1norm = v1mag * Math.cos(Math.atan2(vy1, vx1) - Math.atan2(ny,nx));
-                        const v2norm = v2mag * Math.cos(Math.atan2(vy2, vx2) - Math.atan2(ny,nx));
+                        const theta_nt_xy = Math.atan2(ny, nx);
 
-                        const v1tan=0;
+                        //find component of both velocity along n hat (the normal) and t hat (the tangent)
+                        const v1norm = v1mag * Math.cos(Math.atan2(vy1, vx1) - theta_nt_xy);
+                        const v1tan  = v1mag * Math.sin(Math.atan2(vy1, vx1) - theta_nt_xy);
+
+                        const v2norm = v2mag * Math.cos(Math.atan2(vy2, vx2) - theta_nt_xy);
+                        const v2tan  = v2mag * Math.sin(Math.atan2(vy2, vx2) - theta_nt_xy);
 
                         // use 1d elastic collision equations
                         const v1new = ((mass1 - mass2) / (mass1 + mass2)) * v1norm + ((2 * mass2) / (mass1 + mass2)) * v2norm;
                         const v2new = ((2 * mass1) / (mass1 + mass2)) * v1norm + ((mass2 - mass1) / (mass1 + mass2)) * v2norm;
 
-                        vx1 = v1new * Math.cos(Math.atan2(ny,nx)) + (v1new * Math.cos(Math.atan2(ty, tx)));
-                        vy1 = v1new * Math.sin(Math.atan2(ny,nx)) + (v1new * Math.sin(Math.atan2(ty, tx)));  //this appears to work!
+                        const v1theta_nt_new = Math.atan2(v1tan, v1new);
+                        const v2theta_nt_new = Math.atan2(v2tan, v2new);
+
+                        const v1theta_xy_new = v1theta_nt_new + theta_nt_xy;
+                        const v2theta_xy_new = v2theta_nt_new + theta_nt_xy;
+
+                        const v1newmag = Math.sqrt(v1new * v1new + v1tan * v1tan);
+                        const v2newmag = Math.sqrt(v2new * v2new + v2tan * v2tan);
+
+                        vx1 = v1newmag * Math.cos(v1theta_xy_new);
+                        vy1 = v1newmag * Math.sin(v1theta_xy_new);
+
+                        vx2 = v2newmag * Math.cos(v2theta_xy_new);
+                        vy2 = v2newmag * Math.sin(v2theta_xy_new);
+                        /*
+                        vx1 = v1new * Math.cos(Math.atan2(ny,nx)) + (-v1new * Math.cos(Math.atan2(ty, tx)));
+                        vy1 = v1new * Math.sin(Math.atan2(ny,nx)) + (-v1new * Math.sin(Math.atan2(ty, tx)));  //this appears to work!
                         
-                        vx2 = v2new * Math.cos(Math.atan2(ny,nx)) + (-v2new * Math.cos(Math.atan2(ty, tx)));
-                        vy2 = v2new * Math.sin(Math.atan2(ny,nx)) + (-v2new * Math.sin(Math.atan2(ty, tx)));
+                        vx2 = v2new * Math.cos(Math.atan2(ny,nx)) + (v2new * Math.cos(Math.atan2(ty, tx)));
+                        vy2 = v2new * Math.sin(Math.atan2(ny,nx)) + (v2new * Math.sin(Math.atan2(ty, tx)));
+                        */
 
                         //okay, this works for the initial test case, but somehow, eventually, all energy is lost. That means something is wrong.
                         // Idea: implement an N axis and a T axis, s.t. momentum is figured along the n- and t-axes.
