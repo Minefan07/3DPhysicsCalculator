@@ -175,11 +175,7 @@
                 const frictionCoefficient = u_kinput.value; // example value for rolling friction
                 const frictionForce = frictionCoefficient * normalForce;
 
-                // Friction always opposes motion
-                if (Math.abs(velocity) < 0.01) {
-                    return 0; // no friction if nearly stopped
-                }
-                return velocity > 0 ? -frictionForce : frictionForce;
+                return frictionForce;
             }
         }
 
@@ -249,9 +245,7 @@
             const ctx = canvas.getContext('2d');
             const timeStep = 1.0 / 60.0; // 60 Hz
             const cutoff = parseFloat(cutoffIpt.value) || 0.01; // numeric cutoff
-            // radius and CANVAS_SCALE assumed global (as in your original code)
 
-            // initial positions (same as your original)
             let x1 = radius + 1;
             let x2 = (canvas.width / CANVAS_SCALE) - radius - 1;
             let y1 = (canvas.height / CANVAS_SCALE) - radius;
@@ -260,17 +254,16 @@
             clearCanvas();
             pathPoints = [];
 
-            // state for collision detection
-            let collidedNow = false; // declared and used properly
-
             const interval = setInterval(() => {
                 // compute magnitudes and directions
                 const mag1 = Math.sqrt(vx1 * vx1 + vy1 * vy1);
                 const mag2 = Math.sqrt(vx2 * vx2 + vy2 * vy2);
 
-                // drag + friction (keep your functions)
+                // drag (tested, works)
                 const dragAcc1 = findDrag(mag1, radius) / mass1;
                 const dragAcc2 = findDrag(mag2, radius) / mass2;
+
+                // friction (works now)
                 const fricAcc1 = findFriction(mag1, mass1) / mass1;
                 const fricAcc2 = findFriction(mag2, mass2) / mass2;
 
@@ -360,7 +353,6 @@
                 const distSq = dx * dx + dy * dy;
                 const minDist = 2 * radius;
                 if (distSq <= minDist * minDist) {
-                    console.log("collision1");
                     const dist = Math.sqrt(distSq) || 1e-12;
                     // normal vector (from 1 to 2)
 
@@ -373,9 +365,6 @@
                     // tangent vector (needed to preserve all energy?)
                     const tx = -dy / dist;
                     const ty = dx / dist;
-
-
-                    // this code is funky; in test case where {s1: 10, 10, 45deg} and {s2: 10, 10, 45deg} they simply stick together; wrong, should be elastic along normal line.
 
                     //ok, time to spitball ideas:
     
@@ -428,9 +417,7 @@
                         //okay, this works for the initial test case, but somehow, eventually, all energy is lost. That means something is wrong.
                         // Idea: implement an N axis and a T axis, s.t. momentum is figured along the n- and t-axes.
 
-                        // loss of energy: how to compensate? determine components?
-
-                        console.log(`vx1: ${vx1}\nvy1: ${vy1}\nvx2: ${vx2}\nvy2: ${vy2}`);
+                        //DONE!
 
                         //find normal line, change velocity along normal line!
 
@@ -438,7 +425,6 @@
                         if (!collidedNow) {
                             collisions++;
                             collidedNow = true;
-                            console.log('another collision');
                         }
                     
 
@@ -456,7 +442,6 @@
                 } else {
                     // not overlapping -> reset collided flag so next contact counts
                     collidedNow = false;
-                    console.log('collidedNow is false');
                 }
 
                 // stop condition: both speeds below cutoff
