@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Momentum Simulation</title>
+    <link rel="icon" href="./favicon.png" type="image/png">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding-top: 60px;
+            /* to avoid overlap with fixed header */
+            background-color: #222222;
+            color: white;
+            width: 100%-10px;
+        }
+
+        .header {
+            background-color: #333333;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .goback {
+            background-color: #222222;
+            top: 0;
+            color: white;
+            left: 0;
+            padding: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        canvas {
+            background-color: #111111;
+            display: block;
+        }
+
+        input {
+            margin: 5px;
+            background-color: #000000;
+            padding: 5px;
+            border-radius: 3px;
+            border: 0;
+            color: white;
+
+        }
+
+        .launch {
+            border-radius: 5px;
+            border: none;
+            background-image: linear-gradient(blue, green);
+            color: white;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .launch:active {
+            background-image: linear-gradient(darkblue, darkgreen);
+        }
+    </style>
+</head>
+
+<body onload="resizeCanvas()" id="body">
+    <div class="header" id="header"><button class="goback" title="Go Back to All Simulations"
+            onclick="javascript:window.location.href='../'">Physics Simulations</button></div>
+    <div id="menu"></div>
+
+
+    <h1>Momentum Simulation</h1>
+    Watch the simulation to see collision physics.<br>
+
+    <canvas id="simulationCanvas" width="800" height="600" style="border:1px solid #000000;">
+        Your browser does not support the HTML5 canvas tag.
+    </canvas><br>
+
+    <input type="checkbox" id="advancedOptions"
+        onclick="document.getElementById('advancedSettings').style.display = this.checked ? 'block' : 'none';"> Show
+    Advanced Options<br>
+
+    <div id="advancedSettings"
+        style="display:none; border:1px solid gray; padding:10px; margin:10px; border-radius:5px;">
+        <b>Advanced Options:</b><br>
+        <input type="checkbox" id="disableDrag" checked onchange="disableDrag=this.checked;">Disable Air Resistance (No
+        Drag)<br>
+        <input type="checkbox" id="disableFriction" checked onchange="disableFriction=this.checked;">Disable Ground
+        Friction<br>
+
+        <input type="checkbox" id="collideWWalls" onchange="collideWalls=this.checked;" checked>Collide with Walls
+        (otherwise
+        simulation will stop)<br>
+
+        Custom Drag Coefficient:<input type="number" id="customDragCoeff" placeholder="0.47 for a sphere" step="0.01"
+            value="0.47"><br>
+        Custom Coefficient of Kinetic Friction:<input type="number" id="customUK" placeholder="" step="0.01"
+            value="0.10" onchange=""><br>
+        Simulation Velocity Cutoff:<input type="number" id="velocityCutoff" placeholder="0.01 by default" step="0.01"
+            value="0.01"><br>
+    </div>
+
+    Radius of Both Spheres: <input type="number" id="radius" placeholder="(m)" value="1.0"
+        onchange="radius=parseFloat(this.value);">Grid Size: <input type="number" id="gridSize"
+        placeholder="Pixels per Meter" value="50" onchange="CANVAS_SCALE = parseFloat(this.value);"><br>
+
+    <input type="number" id="mass1" placeholder="Mass of Sphere 1 (kg)">
+    <input type="number" id="velocity1" placeholder="Initial Velocity of Sphere 1 (m/s)">
+    <input type="number" id="angle1" placeholder="Initial Angle of Sphere 1"><br>
+
+    <input type="number" id="mass2" placeholder="Mass of Sphere 2 (kg)">
+    <input type="number" id="velocity2" placeholder="Initial Velocity of Sphere 2 (m/s)">
+    <input type="number" id="angle2" placeholder="Initial Angle of Sphere 2"><br>
+
+    <input type="button" id="go" class="launch" value="Collide!" onclick="go()">
+    <input type="button" id="grid" class="launch" value="Show Grid" onclick="drawTestGrid()">
+    <br><br>
+
+    <div id="data"></div>
+    <script>
+        var radius = 1.0;
+
+        var CANVAS_SCALE = 50; // pixels per meter
+
+        var collidednow = false;
+
+        var objects = [];
+
+        var disableDrag = true;
+        var customDragInput = document.getElementById('customDragCoeff');
+
+        var disableFriction = true;
+        var u_kinput = document.getElementById('customUK'); // coefficient of kinetic friction
+
+        var cutoffIpt = document.getElementById('velocityCutoff');
+
+        var collideWalls = true;
+
+        function resizeCanvas() {
+            const canvas = document.getElementById('simulationCanvas');
+            canvas.width = document.getElementById("body").offsetWidth;
+        }
+
+        function findDrag(velocity, radius) {
+            if (disableDrag) {
+                return 0;
+            }
+            else {
+                const airDensity = 1.225; // kg/m^3
+                const dragCoefficient = customDragInput.value; // for a sphere
+                const area = Math.PI * Math.pow(radius, 2); // cross-sectional area
+
+                return 0.5 * airDensity * dragCoefficient * area * Math.pow(velocity, 2);
+            }
+        }
+
+        function findFriction(velocity, mass) {
+            if (disableFriction) {
+                return 0;
+            }
+            else {
+                const normalForce = mass * 9.81; // assuming flat surface
+                const frictionCoefficient = u_kinput.value; // example value for rolling friction
+                const frictionForce = frictionCoefficient * normalForce;
+
+                // Friction always opposes motion
+                if (Math.abs(velocity) < 0.01) {
+                    return 0; // no friction if nearly stopped
+                }
+                return velocity > 0 ? -frictionForce : frictionForce;
+            }
+        }
+
+        function clearCanvas() {
+            const canvas = document.getElementById('simulationCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function drawTestGrid() {
+            const canvas = document.getElementById('simulationCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.strokeStyle = 'gray';
+            for (let x = 0; x <= canvas.width; x += CANVAS_SCALE) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y <= canvas.height; y += CANVAS_SCALE) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+        }
+
+
+        const canvas = document.getElementById('simulationCanvas');
+
+        function go() {
+            // Input parsing
+            let mass1 = parseFloat(document.getElementById('mass1').value);
+            let vi_1 = parseFloat(document.getElementById('velocity1').value);
+            let thetai_1 = parseFloat(document.getElementById('angle1').value) * Math.PI / 180;
+
+            let mass2 = parseFloat(document.getElementById('mass2').value);
+            let vi_2 = parseFloat(document.getElementById('velocity2').value);
+            let thetai_2 = parseFloat(document.getElementById('angle2').value) * Math.PI / 180;
+
+            if (isNaN(mass1) || isNaN(vi_1) || isNaN(mass2) || isNaN(vi_2) ||
+                isNaN(thetai_1) || isNaN(thetai_2)) {
+                alert("Please enter valid numbers for all fields.");
+                return;
+            }
+
+            if (mass1 <= 0 || mass2 <= 0) {
+                alert("Illegal Nonpositive Mass! Defaulting to 1 kg.");
+            }
+            if (mass1 <= 0) { mass1 = 1.0; document.getElementById('mass1').value = 1.0; }
+            if (mass2 <= 0) { mass2 = 1.0; document.getElementById('mass2').value = 1.0; }
+
+            // velocities
+            let vx1 = vi_1 * Math.cos(thetai_1);
+            let vy1 = vi_1 * Math.sin(thetai_1);
+
+            let vx2 = vi_2 * Math.cos(thetai_2);
+            let vy2 = vi_2 * Math.sin(thetai_2);
+
+            let collisions = 0;
+            let iterations = 0;
+            let time = 0;
+            let done_moving = false;
+
+            // canvas / constants
+            const canvas = document.getElementById('simulationCanvas');
+            const ctx = canvas.getContext('2d');
+            const timeStep = 1.0 / 60.0; // 60 Hz
+            const cutoff = parseFloat(cutoffIpt.value) || 0.01; // numeric cutoff
+            // radius and CANVAS_SCALE assumed global (as in your original code)
+
+            // initial positions (same as your original)
+            let x1 = radius + 1;
+            let x2 = (canvas.width / CANVAS_SCALE) - radius - 1;
+            let y1 = (canvas.height / CANVAS_SCALE) - radius;
+            let y2 = (canvas.height / CANVAS_SCALE) - radius;
+
+            clearCanvas();
+            pathPoints = [];
+
+            // state for collision detection
+            let collidedNow = false; // declared and used properly
+
+            const interval = setInterval(() => {
+                // compute magnitudes and directions
+                const mag1 = Math.sqrt(vx1 * vx1 + vy1 * vy1);
+                const mag2 = Math.sqrt(vx2 * vx2 + vy2 * vy2);
+
+                // drag + friction (keep your functions)
+                const dragAcc1 = findDrag(mag1, radius) / mass1;
+                const dragAcc2 = findDrag(mag2, radius) / mass2;
+                const fricAcc1 = findFriction(mag1, mass1) / mass1;
+                const fricAcc2 = findFriction(mag2, mass2) / mass2;
+
+                // speed after deceleration (clamp to zero)
+                const v1_n = Math.max(0, mag1 - (dragAcc1 + fricAcc1) * timeStep);
+                const v2_n = Math.max(0, mag2 - (dragAcc2 + fricAcc2) * timeStep);
+
+                // preserve direction: scale components by ratio v_new / v_old
+                if (mag1 > 1e-12) {
+                    const scale1 = v1_n / mag1;
+                    vx1 *= scale1;
+                    vy1 *= scale1;
+                } else {
+                    vx1 = 0; vy1 = 0;
+                }
+                if (mag2 > 1e-12) {
+                    const scale2 = v2_n / mag2;
+                    vx2 *= scale2;
+                    vy2 *= scale2;
+                } else {
+                    vx2 = 0; vy2 = 0;
+                }
+
+                // update positions
+                x1 += vx1 * timeStep;
+                y1 += vy1 * timeStep;
+                x2 += vx2 * timeStep;
+                y2 += vy2 * timeStep;
+
+                // wall collisions for sphere 1 (flip only the relevant component)
+                if (isOutOfBounds(x1, y1, radius)) {
+                    if (collideWalls) {
+                        // right wall
+                        if (x1 > canvas.width / CANVAS_SCALE - radius) {
+                            x1 = canvas.width / CANVAS_SCALE - radius;
+                            vx1 = -vx1;
+                        }
+                        // bottom wall
+                        if (y1 > canvas.height / CANVAS_SCALE - radius) {
+                            y1 = canvas.height / CANVAS_SCALE - radius;
+                            vy1 = -vy1;
+                        }
+                        // left wall
+                        if (x1 < radius) {
+                            x1 = radius;
+                            vx1 = -vx1;
+                        }
+                        // top wall
+                        if (y1 < radius) {
+                            y1 = radius;
+                            vy1 = -vy1;
+                        }
+                    } else {
+                        done_moving = true;
+                        clearInterval(interval);
+                    }
+                }
+
+                // wall collisions for sphere 2 (if needed in your design; you had similar logic only for sphere1)
+                if (isOutOfBounds(x2, y2, radius)) {
+                    if (collideWalls) {
+                        if (x2 > canvas.width / CANVAS_SCALE - radius) {
+                            x2 = canvas.width / CANVAS_SCALE - radius;
+                            vx2 = -vx2;
+                        }
+                        if (y2 > canvas.height / CANVAS_SCALE - radius) {
+                            y2 = canvas.height / CANVAS_SCALE - radius;
+                            vy2 = -vy2;
+                        }
+                        if (x2 < radius) {
+                            x2 = radius;
+                            vx2 = -vx2;
+                        }
+                        if (y2 < radius) {
+                            y2 = radius;
+                            vy2 = -vy2;
+                        }
+                    } else {
+                        done_moving = true;
+                        clearInterval(interval);
+                    }
+                }
+
+                // check collision between spheres (2D)
+                const dx = x2 - x1;
+                const dy = y2 - y1;
+                const distSq = dx * dx + dy * dy;
+                const minDist = 2 * radius;
+                if (distSq <= minDist * minDist) {
+                    console.log("collision1");
+                    const dist = Math.sqrt(distSq) || 1e-12;
+                    // normal vector (from 1 to 2)
+
+                    // unit vector n representing the direction of the n-axis
+                    const nx = dx / dist;
+                    const ny = dy / dist;
+
+                    const nmag = Math.sqrt(nx*nx + ny*ny);
+
+                    // tangent vector (needed to preserve all energy?)
+                    const tx = -dy / dist;
+                    const ty = dx / dist;
+
+
+                    // this code is funky; in test case where {s1: 10, 10, 45deg} and {s2: 10, 10, 45deg} they simply stick together; wrong, should be elastic along normal line.
+
+                    //ok, time to spitball ideas:
+    
+                    /*  With a vector A in the XY plane, there should be an NT plane at some angle to XY, in two dimensions, that will allow for the vector's component
+                     *  along the N-axis to be the one where momentum is considered. Then, any vectors in the T-axis should remain unchanged.
+                     *
+                     *
+                    */
+
+                        
+                        // find magnitude of velocity first
+                        const v1mag = Math.sqrt(vx1 * vx1 + vy1 * vy1);
+                        const v2mag = Math.sqrt(vx2 * vx2 + vy2 * vy2);
+
+                        //find component of both velocity along n hat (the normal)
+                        const v1norm = v1mag * Math.cos(Math.atan2(vy1, vx1) - Math.atan2(ny,nx));
+                        const v2norm = v2mag * Math.cos(Math.atan2(vy2, vx2) - Math.atan2(ny,nx));
+
+                        const v1tan=0;
+
+                        // use 1d elastic collision equations
+                        const v1new = ((mass1 - mass2) / (mass1 + mass2)) * v1norm + ((2 * mass2) / (mass1 + mass2)) * v2norm;
+                        const v2new = ((2 * mass1) / (mass1 + mass2)) * v1norm + ((mass2 - mass1) / (mass1 + mass2)) * v2norm;
+
+                        vx1 = v1new * Math.cos(Math.atan2(ny,nx)) + (v1new * Math.cos(Math.atan2(ty, tx)));
+                        vy1 = v1new * Math.sin(Math.atan2(ny,nx)) + (v1new * Math.sin(Math.atan2(ty, tx)));  //this appears to work!
+                        
+                        vx2 = v2new * Math.cos(Math.atan2(ny,nx)) + (-v2new * Math.cos(Math.atan2(ty, tx)));
+                        vy2 = v2new * Math.sin(Math.atan2(ny,nx)) + (-v2new * Math.sin(Math.atan2(ty, tx)));
+
+                        //okay, this works for the initial test case, but somehow, eventually, all energy is lost. That means something is wrong.
+                        // Idea: implement an N axis and a T axis, s.t. momentum is figured along the n- and t-axes.
+
+                        // loss of energy: how to compensate? determine components?
+
+                        console.log(`vx1: ${vx1}\nvy1: ${vy1}\nvx2: ${vx2}\nvy2: ${vy2}`);
+
+                        //find normal line, change velocity along normal line!
+
+                        // count collision only on first contact
+                        if (!collidedNow) {
+                            collisions++;
+                            collidedNow = true;
+                            console.log('another collision');
+                        }
+                    
+
+                    // positional correction to avoid sinking (proportional to inverse masses)
+                    const overlap = minDist - dist;
+                    if (overlap > 0) {
+                        const percent = 0.8; // push them mostly out
+                        const correction = (overlap / (1 / mass1 + 1 / mass2)) * percent;
+                        // move spheres opposite ways by correction * (1/mass)
+                        x1 -= (correction * (1 / mass1)) * nx;
+                        y1 -= (correction * (1 / mass1)) * ny;
+                        x2 += (correction * (1 / mass2)) * nx;
+                        y2 += (correction * (1 / mass2)) * ny;
+                    }
+                } else {
+                    // not overlapping -> reset collided flag so next contact counts
+                    collidedNow = false;
+                    console.log('collidedNow is false');
+                }
+
+                // stop condition: both speeds below cutoff
+                const speed1 = Math.sqrt(vx1 * vx1 + vy1 * vy1);
+                const speed2 = Math.sqrt(vx2 * vx2 + vy2 * vy2);
+                if (speed1 < cutoff && speed2 < cutoff) {
+                    done_moving = true;
+                    clearInterval(interval);
+                }
+
+                iterations++;
+                time = iterations * timeStep;
+
+                // draw
+                clearCanvas();
+                const canvasX1 = x1 * CANVAS_SCALE, canvasY1 = y1 * CANVAS_SCALE;
+                const canvasX2 = x2 * CANVAS_SCALE, canvasY2 = y2 * CANVAS_SCALE;
+
+                ctx.fillStyle = 'green';
+                ctx.beginPath();
+                ctx.arc(canvasX1, canvasY1, radius * CANVAS_SCALE, 0, 2 * Math.PI);
+                ctx.fill();
+
+                ctx.fillStyle = 'blue';
+                ctx.beginPath();
+                ctx.arc(canvasX2, canvasY2, radius * CANVAS_SCALE, 0, 2 * Math.PI);
+                ctx.fill();
+
+                drawVector(ctx, canvasX1, canvasY1, (vx1 * CANVAS_SCALE) / 10, -(vy1 * CANVAS_SCALE) / 10, 'red');
+                drawVector(ctx, canvasX2, canvasY2, (vx2 * CANVAS_SCALE) / 10, -(vy2 * CANVAS_SCALE) / 10, 'red');
+
+                // print status
+                if (!done_moving) {
+                    printData(`No. of Collisions: ${collisions}, Time: ${time.toFixed(2)} s, X1: ${x1.toFixed(2)} m, X2: ${x2.toFixed(2)} m, V1: ${speed1.toFixed(2)} m/s, V2: ${speed2.toFixed(2)} m/s`);
+                } else {
+                    printData(`No. of Collisions: ${collisions}, Final Time: ${time.toFixed(2)} s, X1: ${x1.toFixed(2)} m, X2: ${x2.toFixed(2)} m, V1: ${speed1.toFixed(2)} m/s, V2: ${speed2.toFixed(2)} m/s`);
+                }
+
+            }, timeStep * 1000);
+        }
+
+        function isOutOfBounds(x, y, bound) {
+            const canvas = document.getElementById("simulationCanvas");
+
+            var H = canvas.height;
+            var W = canvas.width;
+
+            if (x > (W / CANVAS_SCALE) - bound || x < bound || y > (H / CANVAS_SCALE) - radius || y < bound) {
+                return true;
+            }
+            else return false;
+        }
+
+        function printData(data) {
+            const dataDiv = document.getElementById('data');
+            dataDiv.innerHTML = data;
+        }
+
+        function drawVector(ctx, startX, startY, vecX, vecY, color) {
+            ctx.strokeStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(startX + vecX, startY - vecY); // invert y for canvas coordinates
+            ctx.stroke();
+        }
+
+    </script>
+</body>
+
+</html>

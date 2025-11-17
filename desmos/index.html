@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Dark Mode Graphing Calculator + Full Multi-CAS</title>
+
+    <!-- MathQuill -->
+    <link rel="stylesheet" href="../scripts/mathquill.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+    <script src="../scripts/mathquill.js"></script>
+
+    <!-- Math.js -->
+    <script src="https://cdn.jsdelivr.net/npm/mathjs@11.9.1/lib/browser/math.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding-top: 60px;
+            background-color: #222;
+            color: #fff;
+        }
+
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: #333;
+            padding: 10px 20px;
+            font-size: 24px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+        }
+
+        .goback {
+                background-color: #222222;
+                top: 0;
+                color:white;
+                left: 0;
+                padding: 10px;
+                font-size: 24px;
+                font-weight: bold;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                z-index: 1000;
+                border: none;
+                border-radius: 10px;
+                cursor: pointer;
+            }
+
+        h1 {
+            margin-left: 20px;
+            font-size: 28px;
+        }
+
+        .container {
+            display: flex;
+            margin: 20px;
+            gap: 20px;
+        }
+
+        .equationsPanel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            min-width: 300px;
+        }
+
+        .equationInput {
+            background: #111;
+            border: 1px solid #000;
+            padding: 10px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .math-field {
+            background: #000;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 5px;
+            min-width: 200px;
+            display: inline-block;
+            border-radius: 4px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            margin-top: 5px;
+        }
+
+        .casOutput {
+            margin-top: 5px;
+            font-size: 14px;
+            color: #0f8;
+        }
+
+        .addButton {
+            background: #0a0;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 5px;
+        }
+
+        canvas {
+            border: 1px solid #000;
+            background: #111;
+            cursor: grab;
+            border-radius: 8px;
+        }
+
+        canvas:active {
+            cursor: grabbing;
+        }
+
+        input[type=color] {
+            cursor: pointer;
+            width: 30px;
+            height: 25px;
+            border: none;
+            padding: 0;
+        }
+
+        button.smallBtn {
+            background: #444;
+            border: none;
+            color: #fff;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header" id="header"><button class="goback" title="Go Back to All Simulations" onclick="javascript:window.location.href='../'">Physics Simulations</button></div>
+        
+
+    <h1>Dark Mode Desmos + Multi-CAS</h1>
+    <p>Graph multiple functions with derivatives, integrals, evaluation, and full graph controls.</p>
+
+    <div class="container">
+        <div class="equationsPanel" id="equationsPanel">
+            <!-- Equation boxes inserted here -->
+        </div>
+        <canvas id="desmosCanvas" width="800" height="600">
+            Your browser does not support the HTML5 canvas tag.
+        </canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('desmosCanvas');
+        const ctx = canvas.getContext('2d');
+        let scale = 40;
+        let xLeft = -10, xRight = 10, yTop = 10, yBottom = -10;
+
+        const defaultColors = ['#0f8', '#f80', '#08f', '#ff0', '#f0f', '#0ff', '#fff', '#f88', '#8f8', '#88f'];
+        let equations = [];
+
+        function getMidpoints() { return { xMid: canvas.width / 2 - (xLeft + xRight) / 2 * scale, yMid: canvas.height / 2 + (yTop + yBottom) / 2 * scale }; }
+
+        // --- Zoom / Pan ---
+        canvas.addEventListener('wheel', e => { e.preventDefault(); scale *= e.deltaY < 0 ? 1.1 : 0.9; redrawAll(); });
+        let isDragging = false, startX, startY;
+        canvas.addEventListener('mousedown', e => { isDragging = true; startX = e.clientX; startY = e.clientY; });
+        window.addEventListener('mousemove', e => { if (!isDragging) return; const dx = (e.clientX - startX) / scale, dy = (e.clientY - startY) / scale; xLeft -= dx; xRight -= dx; yTop += dy; yBottom += dy; startX = e.clientX; startY = e.clientY; redrawAll(); });
+        window.addEventListener('mouseup', () => isDragging = false);
+
+        // --- Add Equation ---
+        function addEquation(initial = 'x^2') {
+            const index = equations.length;
+            const color = defaultColors[index % defaultColors.length];
+
+            const eqDiv = document.createElement('div');
+            eqDiv.className = 'equationInput';
+            eqDiv.innerHTML = `
+            <label>y${index + 1} = </label>
+            <span class="math-field">${initial}</span>
+            <div class="controls">
+                <input type="color" value="${color}" title="Change color">
+                <button class="smallBtn hideBtn">Hide</button>
+                <button class="smallBtn removeBtn">Remove</button>
+            </div>
+            <div class="casOutput">
+                <div>Derivative: <span class="derivative">-</span></div>
+                <div>Integral: <span class="integral">-</span></div>
+            </div>
+        `;
+
+            document.getElementById('equationsPanel').appendChild(eqDiv);
+
+            const mathSpan = eqDiv.querySelector('.math-field');
+            const mathField = MathQuill.getInterface(2).MathField(mathSpan, {
+                handlers: { edit: () => updateEquation(index) }
+            });
+
+            const eqObj = {
+                mathField,
+                color: color,
+                visible: true,
+                colorInput: eqDiv.querySelector('input[type=color]'),
+                hideBtn: eqDiv.querySelector('.hideBtn'),
+                removeBtn: eqDiv.querySelector('.removeBtn'),
+                derivativeSpan: eqDiv.querySelector('.derivative'),
+                integralSpan: eqDiv.querySelector('.integral'),
+                evalSpan: eqDiv.querySelector('.eval1')
+            };
+
+            eqObj.colorInput.addEventListener('input', () => { eqObj.color = eqObj.colorInput.value; redrawAll(); });
+            eqObj.hideBtn.addEventListener('click', () => {
+                eqObj.visible = !eqObj.visible;
+                eqObj.hideBtn.textContent = eqObj.visible ? 'Hide' : 'Show';
+                redrawAll();
+            });
+            eqObj.removeBtn.addEventListener('click', () => {
+                equations.splice(index, 1);
+                eqDiv.remove();
+                redrawAll();
+            });
+
+            equations.push(eqObj);
+            updateEquation(index);
+        }
+
+        function latexToExpr(latex) {
+            return latex.replace(/y\s*=/, '')
+                .replace(/\\frac{([^}]*)}{([^}]*)}/g, '($1)/($2)')
+                .replace(/\\sqrt{([^}]*)}/g, 'sqrt($1)')
+                .replace(/\\cdot|\\times/g, '*')
+                .replace(/\\div/g, '/')
+                .replace(/\\pi/g, 'pi')
+                .replace(/\\sin/g, 'sin')
+                .replace(/\\cos/g, 'cos')
+                .replace(/\\tan/g, 'tan')
+                .replace(/\\ln/g, 'log')
+                .replace(/\\ /g, '');
+        }
+
+        function updateEquation(index) {
+            if (index >= equations.length) return;
+            const eq = equations[index];
+            const latex = eq.mathField.latex();
+            const expr = latexToExpr(latex);
+
+            // Derivative
+            try {
+                eq.derivativeSpan.textContent = math.derivative(expr, 'x').toString();
+            } catch {
+                eq.derivativeSpan.textContent = '-';
+            }
+
+            // Integral placeholder (symbolic integrals are not supported in math.js)
+            eq.integralSpan.textContent = '∫(' + expr + ') dx';
+
+            // Example evaluation
+            try {
+                eq.evalSpan.textContent = math.evaluate(expr, { x: 1 });
+            } catch {
+                eq.evalSpan.textContent = '-';
+            }
+
+            redrawAll();
+        }
+
+        function redrawAll() {
+            drawGrid();
+            equations.forEach(eq => {
+                if (eq.visible) {
+                    drawGraph(latexToExpr(eq.mathField.latex()), eq.color);
+                }
+            });
+        }
+
+        function drawGrid() {
+            const { xMid, yMid } = getMidpoints();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const step = getGridStep();
+            ctx.strokeStyle = '#333'; ctx.lineWidth = 1;
+
+            for (let x = Math.floor(xLeft / step) * step; x <= xRight; x += step) {
+                const px = xMid + x * scale;
+                ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, canvas.height); ctx.stroke();
+                ctx.fillStyle = '#aaa'; ctx.font = '12px Arial'; ctx.fillText(x.toFixed(2), px + 2, yMid + 12);
+            }
+            for (let y = Math.floor(yBottom / step) * step; y <= yTop; y += step) {
+                const py = yMid - y * scale;
+                ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(canvas.width, py); ctx.stroke();
+                if (Math.abs(y) > 1e-6) { ctx.fillStyle = '#aaa'; ctx.font = '12px Arial'; ctx.fillText(y.toFixed(2), xMid + 4, py - 2); }
+            }
+            ctx.strokeStyle = '#666'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(0, yMid); ctx.lineTo(canvas.width, yMid);
+            ctx.moveTo(xMid, 0); ctx.lineTo(xMid, canvas.height); ctx.stroke();
+        }
+
+        function getGridStep() {
+            const pixelsPerStep = 80; const rawStep = pixelsPerStep / scale;
+            const mag = Math.pow(10, Math.floor(Math.log10(rawStep))); const norm = rawStep / mag;
+            if (norm < 1.5) return 1 * mag; else if (norm < 3) return 2 * mag; else if (norm < 7) return 5 * mag; else return 10 * mag;
+        }
+
+        function drawGraph(expr, color) {
+            const { xMid, yMid } = getMidpoints();
+            ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.beginPath();
+            let first = true;
+            for (let px = 0; px <= canvas.width; px++) {
+                const x = (px - xMid) / scale; let y;
+                try { y = math.evaluate(expr, { x }); } catch { continue; }
+                if (typeof y !== 'number' || !isFinite(y)) continue;
+                const py = yMid - y * scale;
+                if (first) { ctx.moveTo(px, py); first = false; } else { ctx.lineTo(px, py); }
+            }
+            ctx.stroke();
+        }
+
+        // --- Initial setup ---
+        addEquation(); // first equation
+
+        // --- Add button ---
+        const addBtn = document.createElement('button');
+        addBtn.textContent = 'Add Equation';
+        addBtn.className = 'addButton';
+        addBtn.onclick = () => addEquation();
+        document.getElementById('equationsPanel').appendChild(addBtn);
+
+    </script>
+</body>
+
+</html>

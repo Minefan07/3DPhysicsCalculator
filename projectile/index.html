@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>2D Physics Calculator</title>
+        <title>Projectile Motion Simulation</title>
         <link rel="icon" href="../images/favicon.png" type="image/png">
         <style>
             body {
@@ -81,13 +81,29 @@
         This simulation calculates the trajectory of a projectile launched at a specified angle and initial velocity, taking into account air resistance based on the object's size and mass.<br>
         The simulation updates the position of the projectile in real-time and displays its path on a 2D canvas.<br><br>
 
-        <h1>2D Physics Calculator</h1>
-        Watch the 2D simulation to see the path of the projectile.<br>
+        <h1>Projectile Motion Simulation</h1>
+        Watch the simulation to see the path of the projectile.<br>
 
         <canvas id="simulationCanvas" width="800" height="600" style="border:1px solid #000000;">
             Your browser does not support the HTML5 canvas tag.
         </canvas><br>
 
+        <input type="checkbox" id="advancedOptions" onclick="document.getElementById('advancedSettings').style.display = this.checked ? 'block' : 'none';"> Show Advanced Options
+        | Presets <select id="presets">
+            <option value="">None</option>
+            <option value="baseball">Baseball</option>
+            <option value="golfball">Golf Ball</option>
+            <option value="soccerball">Soccer Ball</option>
+            <option value="basketball">Basketball</option>
+            <option value="tennisball">Tennis Ball</option>
+        </select>
+        <br>
+        <div id="advancedSettings" style="display:none; border:1px solid gray; padding:10px; margin:10px; border-radius:5px;">
+            <b>Advanced Options:</b><br>
+            <input type="checkbox" id="disableDrag">Disable Air Resistance (No Drag)<br>
+            Custom gravity (m/s²): <input type="number" id="customGravity" placeholder="9.81 m/s² for Earth" value="9.81" step="0.01" disabled><br>
+            Custom Drag Coefficient:<input type="number" id="customDragCoeff" placeholder="0.47 for a sphere" step="0.01" value="0.47"><br>
+        </div>
         <input type="number" id="mass" placeholder="Mass (kg)">
         <input type="number" id="radius" placeholder="Radius (m)">
         <input type="number" id="angle" placeholder="Launch Angle (degrees)">
@@ -99,8 +115,49 @@
 
         <div id="data"></div>
         <script>
-            window.addEventListener('resize', () => {
-                resizeCanvas();
+            const presets = document.getElementById('presets');
+
+            var disableDrag = false;
+
+            presets.addEventListener('change', function() {
+                switch (this.value) {
+                    case 'baseball':
+                        document.getElementById('mass').value = 0.145; // kg
+                        document.getElementById('radius').value = 0.0366; // m
+                        break;
+                    case 'golfball':
+                        document.getElementById('mass').value = 0.0459; // kg
+                        document.getElementById('radius').value = 0.02135; // m
+                        break;
+                    case 'soccerball':
+                        document.getElementById('mass').value = 0.43; // kg
+                        document.getElementById('radius').value = 0.11; // m
+                        break;
+                    case 'basketball':
+                        document.getElementById('mass').value = 0.625; // kg
+                        document.getElementById('radius').value = 0.12; // m
+                        break;
+                    case 'tennisball':
+                        document.getElementById('mass').value = 0.057; // kg
+                        document.getElementById('radius').value = 0.0335; // m
+                        break;
+                    default:
+                        document.getElementById('mass').value = '';
+                        document.getElementById('radius').value = '';
+                }
+            });
+
+            const dragCheckbox = document.getElementById('disableDrag');
+            const customDragInput = document.getElementById('customDragCoeff');
+
+            dragCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    customDragInput.disabled = true;
+                    disableDrag = true;
+                } else {
+                    customDragInput.disabled = false;
+                    disableDrag = false;
+                }
             });
 
             var CANVAS_SCALE = 50; // pixels per meter
@@ -111,11 +168,17 @@
             }
 
             function findDrag(velocity, radius) {
-                const airDensity = 1.225; // kg/m^3
-                const dragCoefficient = 0.47; // for a sphere
-                const area = Math.PI * Math.pow(radius, 2); // cross-sectional area
+                if (disableDrag) {
+                    return 0;
+                }
+                else 
+                {
+                    const airDensity = 1.225; // kg/m^3
+                    const dragCoefficient = customDragInput.value; // for a sphere
+                    const area = Math.PI * Math.pow(radius, 2); // cross-sectional area
 
-                return 0.5 * airDensity * dragCoefficient * area * Math.pow(velocity, 2);
+                    return 0.5 * airDensity * dragCoefficient * area * Math.pow(velocity, 2);
+                }
             }
 
             var pathPoints = [];
