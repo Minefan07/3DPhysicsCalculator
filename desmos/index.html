@@ -267,7 +267,7 @@
 
             // Example evaluation
             try {
-                eq.evalSpan.textContent = math.evaluate(expr, { x: 1 });
+                eq.evalSpan.textContent = math.integral(expr, { x: 1 });
             } catch {
                 eq.evalSpan.textContent = '-';
             }
@@ -323,6 +323,12 @@
                 if (first) { ctx.moveTo(px, py); first = false; } else { ctx.lineTo(px, py); }
             }
             ctx.stroke();
+        }
+
+        function integrate()
+        {
+            //parse input terms by + and -.
+
         }
 
         // --- Initial setup ---

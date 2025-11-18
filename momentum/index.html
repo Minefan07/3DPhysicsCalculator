@@ -90,7 +90,9 @@
 
     <input type="checkbox" id="advancedOptions"
         onclick="document.getElementById('advancedSettings').style.display = this.checked ? 'block' : 'none';"> Show
-    Advanced Options<br>
+    Advanced Options | <input type="checkbox" id="pauseOnCollision" onclick="pauseOnCollision = this.checked;"> Pause
+    Cinematically on Collision | <input type="button" value="Stop" id="stop" class="launch" onclick="stop()">
+    <br>
 
     <div id="advancedSettings"
         style="display:none; border:1px solid gray; padding:10px; margin:10px; border-radius:5px;">
@@ -110,6 +112,10 @@
             value="0.10" onchange=""><br>
         Simulation Velocity Cutoff:<input type="number" id="velocityCutoff" placeholder="0.01 by default" step="0.01"
             value="0.01"><br>
+        Cinematic Slowdown Amount:<input type="number" id="pauseSlowdown" placeholder="8 by default" step="1" value="8"
+            onchange="pauseSlowdownAmnt = parseFloat(this.value);"><br>
+        Cinematic Slowdown Radius:<input type="number" id="pauseRadius" placeholder="2 by default" step="0.01" value="2"
+            onchange="pauseRadius = parseFloat(this.value);"><br>
     </div>
 
     Radius of Both Spheres: <input type="number" id="radius" placeholder="(m)" value="1.0"
@@ -125,11 +131,13 @@
     <input type="number" id="angle2" placeholder="Initial Angle of Sphere 2"><br>
 
     <input type="button" id="go" class="launch" value="Collide!" onclick="go()">
-    <input type="button" id="grid" class="launch" value="Show Grid" onclick="drawTestGrid()">
+    Show Grid: <input type="checkbox" id="grid" class="launch" value="Show Grid" onclick="drawTestGrid()"
+        onchange="drawGrid = this.checked;">
     <br><br>
 
     <div id="data"></div>
     <script>
+
         var radius = 1.0;
 
         var CANVAS_SCALE = 50; // pixels per meter
@@ -147,6 +155,28 @@
         var cutoffIpt = document.getElementById('velocityCutoff');
 
         var collideWalls = true;
+
+        var pauseOnCollision = false;
+        var pauseRadius = 2; // in addition to internal radius of objects
+        var pauseSlowdownAmnt = 8;
+
+        var drawGrid = false;
+
+        var done_moving = false;
+
+        function stop() {
+            if (!done_moving) {
+                var stopBtn = document.getElementById("stop");
+                done_moving = true; //invert
+                stopBtn.value = "Simulation Stopped";
+            }
+        }
+
+        function unStop() {
+            done_moving = false;
+            var stopBtn = document.getElementById("stop");
+            stopBtn.value = "Stop";
+        }
 
         function resizeCanvas() {
             const canvas = document.getElementById('simulationCanvas');
@@ -203,7 +233,6 @@
             }
         }
 
-
         const canvas = document.getElementById('simulationCanvas');
 
         function go() {
@@ -215,6 +244,8 @@
             let mass2 = parseFloat(document.getElementById('mass2').value);
             let vi_2 = parseFloat(document.getElementById('velocity2').value);
             let thetai_2 = parseFloat(document.getElementById('angle2').value) * Math.PI / 180;
+
+            unStop();
 
             if (isNaN(mass1) || isNaN(vi_1) || isNaN(mass2) || isNaN(vi_2) ||
                 isNaN(thetai_1) || isNaN(thetai_2)) {
@@ -237,13 +268,17 @@
 
             let collisions = 0;
             let iterations = 0;
-            let time = 0;
-            let done_moving = false;
+            var time = 0;
+            done_moving = false;
+
+            var timerthingy = 0;
+            var usetimer = false;
 
             // canvas / constants
             const canvas = document.getElementById('simulationCanvas');
             const ctx = canvas.getContext('2d');
-            const timeStep = 1.0 / 60.0; // 60 Hz
+            var timeStep = 1.0 / 60.0; // 60 Hz
+            var timeStepOG = 1.0 / 60.0;
             const cutoff = parseFloat(cutoffIpt.value) || 0.01; // numeric cutoff
 
             let x1 = radius + 1;
@@ -271,6 +306,7 @@
                 const v1_n = Math.max(0, mag1 - (dragAcc1 + fricAcc1) * timeStep);
                 const v2_n = Math.max(0, mag2 - (dragAcc2 + fricAcc2) * timeStep);
 
+
                 // preserve direction: scale components by ratio v_new / v_old
                 if (mag1 > 1e-12) {
                     const scale1 = v1_n / mag1;
@@ -285,6 +321,24 @@
                     vy2 *= scale2;
                 } else {
                     vx2 = 0; vy2 = 0;
+                }
+
+                const distTest = Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+
+                if (pauseOnCollision) {
+                    if (distTest <= (radius * 2) + pauseRadius) {
+                        //timeStep = 1 / (60 * pauseSlowdownAmnt); //old model
+
+                        var distWORadius = distTest - (radius * 2); // minimum 0; maximum is pauseRadius
+
+                        //      prevents divide by 0 | inverts distWORad. and clamps it to [0,1]
+                        timeStep = 1 / (60 + 60 * (((pauseRadius - distWORadius) / pauseRadius) * (pauseSlowdownAmnt - 1))); //no divide by zero either!
+
+                        //new code: slow down radially for smooth animation: WORKS GREAT!
+                    }
+                    else {
+                        timeStep = 1 / 60; // normal 60fps
+                    }
                 }
 
                 // update positions
@@ -352,7 +406,12 @@
                 const dy = y2 - y1;
                 const distSq = dx * dx + dy * dy;
                 const minDist = 2 * radius;
+
                 if (distSq <= minDist * minDist) {
+                    // COLLISION DETECTED.
+                    usetimer = true;
+                    timerthingy = 0;
+
                     const dist = Math.sqrt(distSq) || 1e-12;
                     // normal vector (from 1 to 2)
 
@@ -360,73 +419,55 @@
                     const nx = dx / dist;
                     const ny = dy / dist;
 
-                    const nmag = Math.sqrt(nx*nx + ny*ny);
+                    const nmag = Math.sqrt(nx * nx + ny * ny);
 
                     // tangent vector (needed to preserve all energy?)
                     const tx = -dy / dist;
                     const ty = dx / dist;
 
-                    //ok, time to spitball ideas:
-    
-                    /*  With a vector A in the XY plane, there should be an NT plane at some angle to XY, in two dimensions, that will allow for the vector's component
-                     *  along the N-axis to be the one where momentum is considered. Then, any vectors in the T-axis should remain unchanged.
-                     *
-                     *
-                    */
 
-                        
-                        // find magnitude of velocity first
-                        const v1mag = Math.sqrt(vx1 * vx1 + vy1 * vy1);
-                        const v2mag = Math.sqrt(vx2 * vx2 + vy2 * vy2);
+                    // find magnitude of velocity first
+                    const v1mag = Math.sqrt(vx1 * vx1 + vy1 * vy1);
+                    const v2mag = Math.sqrt(vx2 * vx2 + vy2 * vy2);
 
-                        const theta_nt_xy = Math.atan2(ny, nx);
+                    const theta_nt_xy = Math.atan2(ny, nx);
 
-                        //find component of both velocity along n hat (the normal) and t hat (the tangent)
-                        const v1norm = v1mag * Math.cos(Math.atan2(vy1, vx1) - theta_nt_xy);
-                        const v1tan  = v1mag * Math.sin(Math.atan2(vy1, vx1) - theta_nt_xy);
+                    //find component of both velocity along n hat (the normal) and t hat (the tangent)
+                    const v1norm = v1mag * Math.cos(Math.atan2(vy1, vx1) - theta_nt_xy);
+                    const v1tan = v1mag * Math.sin(Math.atan2(vy1, vx1) - theta_nt_xy);
 
-                        const v2norm = v2mag * Math.cos(Math.atan2(vy2, vx2) - theta_nt_xy);
-                        const v2tan  = v2mag * Math.sin(Math.atan2(vy2, vx2) - theta_nt_xy);
+                    const v2norm = v2mag * Math.cos(Math.atan2(vy2, vx2) - theta_nt_xy);
+                    const v2tan = v2mag * Math.sin(Math.atan2(vy2, vx2) - theta_nt_xy);
 
-                        // use 1d elastic collision equations
-                        const v1new = ((mass1 - mass2) / (mass1 + mass2)) * v1norm + ((2 * mass2) / (mass1 + mass2)) * v2norm;
-                        const v2new = ((2 * mass1) / (mass1 + mass2)) * v1norm + ((mass2 - mass1) / (mass1 + mass2)) * v2norm;
+                    // use 1d elastic collision equations
+                    const v1new = ((mass1 - mass2) / (mass1 + mass2)) * v1norm + ((2 * mass2) / (mass1 + mass2)) * v2norm;
+                    const v2new = ((2 * mass1) / (mass1 + mass2)) * v1norm + ((mass2 - mass1) / (mass1 + mass2)) * v2norm;
 
-                        const v1theta_nt_new = Math.atan2(v1tan, v1new);
-                        const v2theta_nt_new = Math.atan2(v2tan, v2new);
+                    const v1theta_nt_new = Math.atan2(v1tan, v1new);
+                    const v2theta_nt_new = Math.atan2(v2tan, v2new);
 
-                        const v1theta_xy_new = v1theta_nt_new + theta_nt_xy;
-                        const v2theta_xy_new = v2theta_nt_new + theta_nt_xy;
+                    const v1theta_xy_new = v1theta_nt_new + theta_nt_xy;
+                    const v2theta_xy_new = v2theta_nt_new + theta_nt_xy;
 
-                        const v1newmag = Math.sqrt(v1new * v1new + v1tan * v1tan);
-                        const v2newmag = Math.sqrt(v2new * v2new + v2tan * v2tan);
+                    const v1newmag = Math.sqrt(v1new * v1new + v1tan * v1tan);
+                    const v2newmag = Math.sqrt(v2new * v2new + v2tan * v2tan);
 
-                        vx1 = v1newmag * Math.cos(v1theta_xy_new);
-                        vy1 = v1newmag * Math.sin(v1theta_xy_new);
+                    vx1 = v1newmag * Math.cos(v1theta_xy_new);
+                    vy1 = v1newmag * Math.sin(v1theta_xy_new);
 
-                        vx2 = v2newmag * Math.cos(v2theta_xy_new);
-                        vy2 = v2newmag * Math.sin(v2theta_xy_new);
-                        /*
-                        vx1 = v1new * Math.cos(Math.atan2(ny,nx)) + (-v1new * Math.cos(Math.atan2(ty, tx)));
-                        vy1 = v1new * Math.sin(Math.atan2(ny,nx)) + (-v1new * Math.sin(Math.atan2(ty, tx)));  //this appears to work!
-                        
-                        vx2 = v2new * Math.cos(Math.atan2(ny,nx)) + (v2new * Math.cos(Math.atan2(ty, tx)));
-                        vy2 = v2new * Math.sin(Math.atan2(ny,nx)) + (v2new * Math.sin(Math.atan2(ty, tx)));
-                        */
+                    vx2 = v2newmag * Math.cos(v2theta_xy_new);
+                    vy2 = v2newmag * Math.sin(v2theta_xy_new);
 
-                        //okay, this works for the initial test case, but somehow, eventually, all energy is lost. That means something is wrong.
-                        // Idea: implement an N axis and a T axis, s.t. momentum is figured along the n- and t-axes.
+                    // count collision only on first contact
+                    if (!collidedNow) {
+                        collisions++;
+                        collidedNow = true;
+                    }
 
-                        //DONE!
-
-                        //find normal line, change velocity along normal line!
-
-                        // count collision only on first contact
-                        if (!collidedNow) {
-                            collisions++;
-                            collidedNow = true;
-                        }
-                    
+                    if (timerthingy > 3) {
+                        timerthingy = 4;
+                        usetimer = false;
+                    }
 
                     // positional correction to avoid sinking (proportional to inverse masses)
                     const overlap = minDist - dist;
@@ -452,11 +493,18 @@
                     clearInterval(interval);
                 }
 
+
+                timerthingy++;
                 iterations++;
-                time = iterations * timeStep;
+                time += timeStep;
 
                 // draw
                 clearCanvas();
+
+                if (drawGrid) {
+                    drawTestGrid();
+                }
+
                 const canvasX1 = x1 * CANVAS_SCALE, canvasY1 = y1 * CANVAS_SCALE;
                 const canvasX2 = x2 * CANVAS_SCALE, canvasY2 = y2 * CANVAS_SCALE;
 
@@ -470,6 +518,26 @@
                 ctx.arc(canvasX2, canvasY2, radius * CANVAS_SCALE, 0, 2 * Math.PI);
                 ctx.fill();
 
+                //draw tangent axis for emphasis
+                if (usetimer && (timerthingy <= 3) && pauseOnCollision) {
+                    var xcenter = (canvasX1 + canvasX2) / 2;
+                    var ycenter = (canvasY1 + canvasY2) / 2;
+
+                    var x1temp1 = -canvasY1;
+                    var y1temp1 = canvasX1;
+                    var x2temp1 = -canvasY2;
+                    var y2temp1 = canvasX1;
+
+                    var normalangle = Math.atan2(canvasY2 - canvasY1, canvasX2 - canvasX1);
+
+                    //90 degrees: swap sine and cosine
+                    drawLine(ctx, xcenter - (2 * CANVAS_SCALE * Math.sin(-normalangle)), ycenter - (2 * CANVAS_SCALE * Math.cos(-normalangle)), xcenter + (2 * CANVAS_SCALE * Math.sin(-normalangle)), ycenter + (2 * CANVAS_SCALE * Math.cos(-normalangle)), 'orange');
+                    ctx.font = "24px serif";
+                    ctx.fillStyle = 'orange';
+
+                    ctx.fillText(`${collisions}`, xcenter - ((ctx.measureText(`${collisions}`).width) / 2), ycenter + ((ctx.measureText(`${collisions}`).actualBoundingBoxAscent + ctx.measureText(`${collisions}`).actualBoundingBoxDescent) / 2));
+                }
+
                 drawVector(ctx, canvasX1, canvasY1, (vx1 * CANVAS_SCALE) / 10, -(vy1 * CANVAS_SCALE) / 10, 'red');
                 drawVector(ctx, canvasX2, canvasY2, (vx2 * CANVAS_SCALE) / 10, -(vy2 * CANVAS_SCALE) / 10, 'red');
 
@@ -478,6 +546,7 @@
                     printData(`No. of Collisions: ${collisions}, Time: ${time.toFixed(2)} s, X1: ${x1.toFixed(2)} m, X2: ${x2.toFixed(2)} m, V1: ${speed1.toFixed(2)} m/s, V2: ${speed2.toFixed(2)} m/s`);
                 } else {
                     printData(`No. of Collisions: ${collisions}, Final Time: ${time.toFixed(2)} s, X1: ${x1.toFixed(2)} m, X2: ${x2.toFixed(2)} m, V1: ${speed1.toFixed(2)} m/s, V2: ${speed2.toFixed(2)} m/s`);
+                    clearInterval(interval);
                 }
 
             }, timeStep * 1000);
@@ -505,6 +574,14 @@
             ctx.beginPath();
             ctx.moveTo(startX, startY);
             ctx.lineTo(startX + vecX, startY - vecY); // invert y for canvas coordinates
+            ctx.stroke();
+        }
+
+        function drawLine(ctx, startX, startY, finalX, finalY, color) {
+            ctx.strokeStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(finalX, finalY);
             ctx.stroke();
         }
 
