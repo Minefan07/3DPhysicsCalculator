@@ -90,7 +90,7 @@
 
     <input type="checkbox" id="advancedOptions"
         onclick="document.getElementById('advancedSettings').style.display = this.checked ? 'block' : 'none';"> Show
-    Advanced Options | <input type="checkbox" id="pauseOnCollision" onclick="pauseOnCollision = this.checked;"> Pause
+    Advanced Options | <input type="checkbox" id="pauseOnCollision" checked onclick="pauseOnCollision = this.checked;"> Pause
     Cinematically on Collision | <input type="button" value="Stop" id="stop" class="launch" onclick="stop()">
     <br>
 
@@ -156,7 +156,7 @@
 
         var collideWalls = true;
 
-        var pauseOnCollision = false;
+        var pauseOnCollision = true;
         var pauseRadius = 2; // in addition to internal radius of objects
         var pauseSlowdownAmnt = 8;
 
@@ -330,9 +330,10 @@
                         //timeStep = 1 / (60 * pauseSlowdownAmnt); //old model
 
                         var distWORadius = distTest - (radius * 2); // minimum 0; maximum is pauseRadius
+                        var avgvel12     = (Math.sqrt(vx1 * vx1 + vy1 * vy1) + Math.sqrt(vx2 * vx2 + vy2 * vy2))/2;
 
                         //      prevents divide by 0 | inverts distWORad. and clamps it to [0,1]
-                        timeStep = 1 / (60 + 60 * (((pauseRadius - distWORadius) / pauseRadius) * (pauseSlowdownAmnt - 1))); //no divide by zero either!
+                        timeStep = 1 / (60 + 60 * (((pauseRadius - distWORadius) / pauseRadius) * (avgvel12/10) * (pauseSlowdownAmnt - 1))); //no divide by zero either!
 
                         //new code: slow down radially for smooth animation: WORKS GREAT!
                     }
@@ -543,9 +544,9 @@
 
                 // print status
                 if (!done_moving) {
-                    printData(`No. of Collisions: ${collisions}, Time: ${time.toFixed(2)} s, X1: ${x1.toFixed(2)} m, X2: ${x2.toFixed(2)} m, V1: ${speed1.toFixed(2)} m/s, V2: ${speed2.toFixed(2)} m/s`);
+                    printData(`No. of Collisions: ${collisions}, Time: ${time.toFixed(2)} s, S1: (${x1.toFixed(2)},${y1.toFixed(2)}) m, S2: (${x2.toFixed(2)},${y2.toFixed(2)}) m, V1: ${speed1.toFixed(2)} m/s, V2: ${speed2.toFixed(2)} m/s`);
                 } else {
-                    printData(`No. of Collisions: ${collisions}, Final Time: ${time.toFixed(2)} s, X1: ${x1.toFixed(2)} m, X2: ${x2.toFixed(2)} m, V1: ${speed1.toFixed(2)} m/s, V2: ${speed2.toFixed(2)} m/s`);
+                    printData(`No. of Collisions: ${collisions}, Final Time: ${time.toFixed(2)} s, S1: (${x1.toFixed(2)},${y1.toFixed(2)}) m, S2: (${x2.toFixed(2)},${y2.toFixed(2)}) m, V1: ${speed1.toFixed(2)} m/s, V2: ${speed2.toFixed(2)} m/s`);
                     clearInterval(interval);
                 }
 
