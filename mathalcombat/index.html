@@ -94,6 +94,14 @@
             const canvas = document.getElementById('simulationCanvas');
             const ctx = canvas.getContext('2d');
 
+
+            
+
+            function clearCanvas()
+            {
+                ctx.clearRe
+            }
+
             //idea: Tank game with ammunition, but when you run out, you have to solve math problems to reload.
             
             var ammunition = 20;
@@ -142,6 +150,10 @@
                     this.x += this.vx * timeStep;
                     this.y += this.vy * timeStep;
                     console.log(`x: ${x}, y: ${y}`);
+
+
+                    //draw code last
+                    
 
                 }, timeStep * 1000);
             }
