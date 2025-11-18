@@ -83,6 +83,7 @@
         <canvas id="simulationCanvas" width="800" height="600" style="border:1px solid #000000;">
             Your browser does not support the HTML5 canvas tag.
         </canvas><br>
+        <input class="launch" id="go" value="Fight!" onclick="run()">
 
         <script>
             function resizeCanvas() {
@@ -95,6 +96,91 @@
 
             //idea: Tank game with ammunition, but when you run out, you have to solve math problems to reload.
             
+            var ammunition = 20;
+
+            var x = 0; y = 0; vx = 0; vy = 0;
+
+            var recoilForce = 5; // newtons
+
+            var tankMass = 100; // kg
+
+            var timeStep = 1 / 60; // 60 fps
+
+            var turretMass = 0; // determine based on type; three or four types
+
+            var naturalDeceleration = 0;
+
+            var image = new Image();
+
+
+            
+            function fire()
+            {
+                if (ammunition > 0) 
+                {
+                    ammunition--;
+                }
+                else
+                {
+                    ammunition = 0; // preventing possibility of negative ammo
+                    
+                }
+            }
+
+            function run()
+            {
+                // initialize variables
+                x = 0;
+                y = 0;
+                vx = 0;
+                vy = 0;
+                facing = 0; // angle (radians) since degrees are FAKE
+                ammunition = 20; //may need to decrease later
+                
+                const interval = setInterval(() => {
+                    // update positions with velocity
+                    this.x += this.vx * timeStep;
+                    this.y += this.vy * timeStep;
+                    console.log(`x: ${x}, y: ${y}`);
+
+                }, timeStep * 1000);
+            }
+
+            function move(ax, ay)
+            {
+                this.vx += ax * timeStep;
+                this.vy += ay * timeStep;
+            }
+
+            function moveMG(a, theta)
+            {
+                move(a * Math.cos(theta), a * Math.sin(theta));
+            }
+
+            function renderTank()
+            {
+                ctx.drawImage(img)
+            }
+
+            document.addEventListener("keypress", function(e)
+            {
+
+                console.log("key pressed:" + e.key);
+                switch (e.key) // for now, move simply in fixed direction
+                {
+                    case "w":
+                    case "W": move(0, 2); break;
+                    case "s":
+                    case "S": move(0, -2); break;
+                    case "a":
+                    case "A": move(2, 0); break;
+                    case "d":
+                    case "D": move(0, 2); break;
+                    default: break;
+                }
+
+            });
+
         </script>
 
     </body>
