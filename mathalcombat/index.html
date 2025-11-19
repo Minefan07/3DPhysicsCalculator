@@ -1,199 +1,275 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <title>Mathal Combat!</title>
-        <link rel="icon" href="./resources/favicon.png" type="image/png">
-        <style>
-            body {
-                font-family: Arial, sans-serif;
-                margin: 20px;
-                padding-top: 60px; /* to avoid overlap with fixed header */
-                background-color: #222222;
-                color: white;
-                width: 100%-10px;
-            }
-            
-            .header {
-                background-color: #333333;
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                padding: 10px;
-                font-size: 24px;
-                font-weight: bold;
-                margin-bottom: 20px;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                z-index: 1000;
-            }
 
-            .goback {
-                background-color: #222222;
-                top: 0;
-                color:white;
-                left: 0;
-                padding: 10px;
-                font-size: 24px;
-                font-weight: bold;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                z-index: 1000;
-                border: none;
-                border-radius: 10px;
-                cursor: pointer;
-            }
-            
-            canvas {
-                background-color: #111111;
-                display: block;
-            }
+<head>
+    <title>Mathal Combat!</title>
+    <link rel="icon" href="./resources/favicon.png" type="image/png">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding-top: 60px;
+            /* to avoid overlap with fixed header */
+            background-color: #222222;
+            color: white;
+            width: 100%-10px;
+        }
 
-            input {
-                margin: 5px;
-                background-color:#000000;
-                padding: 5px;
-                border-radius: 3px;
-                border:0;
-                color: white;
+        .header {
+            background-color: #333333;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
 
-            }
+        .goback {
+            background-color: #222222;
+            top: 0;
+            color: white;
+            left: 0;
+            padding: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+        }
 
-            .launch {
-                border-radius: 5px;
-                border:none;
-                background-image: linear-gradient(blue, green);
-                color: white;
-                padding: 10px 20px;
-                font-size: 16px;
-                cursor: pointer;
-            }
+        canvas {
+            background-color: #111111;
+            display: block;
+        }
 
-            .launch:active {
-                background-image: linear-gradient(darkblue, darkgreen);
-            }
+        input {
+            margin: 5px;
+            background-color: #000000;
+            padding: 5px;
+            border-radius: 3px;
+            border: 0;
+            color: white;
 
-        </style>
-    </head>
-    <body onload="resizeCanvas()" id="body">
-        <div class="header" id="header"><button class="goback" title="Go Back to All Simulations" onclick="javascript:window.location.href='../'">Physics Simulations</button></div>
-        <div id="menu"></div>
+        }
 
-        <h1>Mathal Combat!</h1>
-        Fight and do math!<br>
+        .launch {
+            border-radius: 5px;
+            border: none;
+            background-image: linear-gradient(blue, green);
+            color: white;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
 
-        <canvas id="simulationCanvas" width="800" height="600" style="border:1px solid #000000;">
-            Your browser does not support the HTML5 canvas tag.
-        </canvas><br>
-        <input class="launch" id="go" value="Fight!" onclick="run()">
+        .launch:active {
+            background-image: linear-gradient(darkblue, darkgreen);
+        }
+    </style>
+</head>
 
-        <script>
-            function resizeCanvas() {
-                const canvas = document.getElementById('simulationCanvas');
-                canvas.width = document.getElementById("body").offsetWidth;
-            }
+<body onload="resizeCanvas()" id="body">
+    <div class="header" id="header"><button class="goback" title="Go Back to All Simulations"
+            onclick="javascript:window.location.href='../'">Physics Simulations</button></div>
+    <div id="menu"></div>
 
+    <h1>Mathal Combat!</h1>
+    Fight and do math!<br>
+
+    <canvas id="simulationCanvas" width="800" height="600" style="border:1px solid #000000;">
+        Your browser does not support the HTML5 canvas tag.
+    </canvas><br>
+    <input type="button" class="launch" id="go" value="Fight!" onclick="run()">
+
+    <script>
+        function resizeCanvas() {
             const canvas = document.getElementById('simulationCanvas');
-            const ctx = canvas.getContext('2d');
+            canvas.width = document.getElementById("body").offsetWidth;
+        }
 
+        const canvas = document.getElementById('simulationCanvas');
+        const ctx = canvas.getContext('2d');
 
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        //idea: Tank game with ammunition, but when you run out, you have to solve math problems to reload.
+
+        var ammunition = 20;
+
+        var x = 0; y = 0; vx = 0; vy = 0;
+        var facing = 0;
+
+        var recoilForce = 5; // newtons
+
+        var tankMass = 100; // kg
+
+        var timeStep = 1 / 60; // 60 fps
+
+        var turretMass = 0; // determine based on type; three or four types
+
+        var maxSpeed = 50;
+        var frictionAccel = 10;
+
+        var mouseX = 0;
+        var mouseY = 0;
+
+        var keyspressed = [];
+
+        var image = new Image();
+        image.src = "resources/tank0.png";
+
+        var gun = new Image();
+        gun.src = "resources/gun0.png";
+
+        function fire() {
+            if (ammunition > 0) {
+                ammunition--;
+            }
+            else {
+                ammunition = 0; // preventing possibility of negative ammo
+            }
+        }
+
+        function run() {
+            // initialize variables
+            clearCanvas();
+            x = 0;
+            y = 0;
+            vx = 0;
+            vy = 0;
+            facing = 0; // angle (radians) since degrees are FAKE
+            ammunition = 20; //may need to decrease later
+
+            movingAnim = 0;
+
+            const interval = setInterval(() => {
+                // update positions with velocity
+
+                movingAnim++;
+
+                if(movingAnim > 1) movingAnim = 0;
+
+                move(movingAnim);
+
+                this.x += this.vx * timeStep;
+                this.y += this.vy * timeStep;
+                //console.log(`x: ${x}, y: ${y}`);
+
+                //draw code last
+                clearCanvas();
+
+                decelerate();
+                renderTank(this.x, this.y);
+                positionTurret(this.x, this.y);
+                renderStats();
+            }, timeStep * 1000);
+        }
+
+        function move(frame) {
+            //console.log(keyspressed);
+            var vxtest = 0;
+            var vytest = 0;
+
+            if (keyspressed['a'] || keyspressed['A']) { //maybe add arrow keys later
+                vxtest -= maxSpeed;
+                image.src = `resources/tank${frame}.png`;
+            }
             
-
-            function clearCanvas()
-            {
-                ctx.clearRe
+            if (keyspressed['d'] || keyspressed['D']) {
+                vxtest += maxSpeed;
+                image.src = `resources/tank${frame}.png`;
             }
-
-            //idea: Tank game with ammunition, but when you run out, you have to solve math problems to reload.
             
-            var ammunition = 20;
+            if (keyspressed['w'] || keyspressed['W']) {
+                vytest -= maxSpeed;
+                image.src = `resources/tank${frame}.png`;
+            }
 
-            var x = 0; y = 0; vx = 0; vy = 0;
-
-            var recoilForce = 5; // newtons
-
-            var tankMass = 100; // kg
-
-            var timeStep = 1 / 60; // 60 fps
-
-            var turretMass = 0; // determine based on type; three or four types
-
-            var naturalDeceleration = 0;
-
-            var image = new Image();
-
-
+            if (keyspressed['s'] || keyspressed['S']) {
+                vytest += maxSpeed;
+                image.src = `resources/tank${frame}.png`;
+            }
             
-            function fire()
-            {
-                if (ammunition > 0) 
-                {
-                    ammunition--;
-                }
-                else
-                {
-                    ammunition = 0; // preventing possibility of negative ammo
-                    
-                }
+            if (keyspressed[' ']) {
+                fire();
             }
 
-            function run()
+            vx = vxtest;
+            vy = vytest;
+
+            if (Math.abs(vx) > 0 || Math.abs(vy) > 0)
             {
-                // initialize variables
-                x = 0;
-                y = 0;
-                vx = 0;
-                vy = 0;
-                facing = 0; // angle (radians) since degrees are FAKE
-                ammunition = 20; //may need to decrease later
-                
-                const interval = setInterval(() => {
-                    // update positions with velocity
-                    this.x += this.vx * timeStep;
-                    this.y += this.vy * timeStep;
-                    console.log(`x: ${x}, y: ${y}`);
-
-
-                    //draw code last
-                    
-
-                }, timeStep * 1000);
+                facing = Math.atan2(vy, vx); //otherwise keep same value
             }
+        }
 
-            function move(ax, ay)
-            {
-                this.vx += ax * timeStep;
-                this.vy += ay * timeStep;
-            }
+        document.addEventListener("mousemove", function (e) {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+        });
 
-            function moveMG(a, theta)
-            {
-                move(a * Math.cos(theta), a * Math.sin(theta));
-            }
+        function positionTurret(x, y)
+        {
+            // find mouse x and y, then determine angle using atan2() and draw with that angle
+            var aimY = mouseY - y - 2*image.height;
+            var aimX = mouseX - x - 2*image.width;
 
-            function renderTank()
-            {
-                ctx.drawImage(img)
-            }
+            var angle = Math.atan2(aimY, aimX);
 
-            document.addEventListener("keypress", function(e)
-            {
+            ctx.save();
+            ctx.translate(x + image.width, y + image.height); //center on tank
+            ctx.rotate(angle + (Math.PI/2));
+            ctx.translate(-x - image.width, -y - image.height);
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(gun, x, y, gun.width * 2, gun.height * 2);
+            ctx.restore();
+        }
 
-                console.log("key pressed:" + e.key);
-                switch (e.key) // for now, move simply in fixed direction
-                {
-                    case "w":
-                    case "W": move(0, 2); break;
-                    case "s":
-                    case "S": move(0, -2); break;
-                    case "a":
-                    case "A": move(2, 0); break;
-                    case "d":
-                    case "D": move(0, 2); break;
-                    default: break;
-                }
+        function moveMG(a, theta) {
+            move(a * Math.cos(theta), a * Math.sin(theta));
+        }
 
-            });
+        function renderTank(x, y) {
+            ctx.save();
+            ctx.translate(x + image.width, y + image.height);
+            ctx.rotate(facing + Math.PI/2);
+            ctx.translate(-x - image.width, -y - image.height);
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(image, x, y, image.width * 2, image.height * 2);
+            ctx.restore();
+        }
 
-        </script>
+        function renderStats() {
+            ctx.font = "Arial 24px";
+            ctx.fillStyle = "white";
+            ctx.fillText(`${ammunition} ammo`, 1, 25);
+        }
 
-    </body>
+        function decelerate() {
+            var angle = Math.atan2(this.vy, this.vx);
+            this.vx -= this.frictionAccel * this.timeStep * Math.cos(angle);
+            this.vy -= this.frictionAccel * this.timeStep * Math.sin(angle);
+        }
+
+        document.addEventListener('keydown', function (e) {
+            keyspressed[e.key] = true;
+        });
+
+        document.addEventListener('keyup', function (e) {
+            keyspressed[e.key] = false;
+        });
+    </script>
+
+</body>
+
 </html>
